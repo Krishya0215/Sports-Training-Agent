@@ -1,0 +1,13 @@
+# 提示词配置文件
+
+# 新版提示词
+rag_qa_prompt: prompts/rag_qa_prompt.txt
+multi_query_prompt: prompts/multi_query_prompt.txt
+hyde_prompt: prompts/hyde_prompt.txt
+answer_generation_prompt: prompts/answer_generation_prompt.txt
+memory_summary_prompt: prompts/memory_summary_prompt.txt
+
+# 旧版提示词（兼容性）
+system_prompt_path: prompts/system_prompt.txt
+rag_summarize_prompt_path: prompts/rag_summarize.txt
+report_prompt_path: prompts/report_prompt.txt

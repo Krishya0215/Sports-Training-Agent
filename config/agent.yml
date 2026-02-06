@@ -1,0 +1,21 @@
+# Agent配置
+agent_name: sports_training_qa_agent
+description: 运动训练知识问答Agent
+
+# LangGraph配置
+max_iterations: 10
+recursion_limit: 25
+
+# 记忆配置
+memory:
+  working_memory_size: 5  # 工作记忆保留最近N轮对话
+  episodic_memory_enabled: true  # 情景记忆
+  semantic_memory_enabled: true  # 语义记忆
+  perceptual_memory_enabled: true  # 感知记忆
+
+# 检索增强配置
+retrieval:
+  use_multi_query: true  # 多查询扩展
+  use_hyde: true  # 假设文档嵌入
+  num_queries: 3  # MQE生成的查询数量
+  rerank_enabled: true  # 重排序

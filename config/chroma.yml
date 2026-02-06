@@ -1,0 +1,25 @@
+# Chroma数据库配置
+collection_name: sports_training_kb
+persist_directory: rag/chroma_db
+
+# 文本分割配置 - 基于Markdown结构
+chunk_size: 800
+chunk_overlap: 100
+separators: ["\n## ", "\n### ", "\n#### ", "\n\n", "\n", "。", "！", "？", "；", " ", ""]
+
+# 相似度检索
+k: 5
+score_threshold: 0.6
+
+# 知识库数据源配置
+data_path: data
+allowed_knowledge_file_types: ["pdf", "md", "txt"]
+
+# 文档处理配置
+document_processing:
+  use_markitdown: true  # 使用MarkItDown处理PDF
+  extract_images: true  # 提取图像
+  image_description_enabled: true  # 为图像生成描述
+
+# md5存储文件配置
+md5_file: md5.txt

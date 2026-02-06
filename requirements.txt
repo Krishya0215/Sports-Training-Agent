@@ -1,0 +1,25 @@
+# LangChain核心库
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langgraph>=0.2.0
+
+# 向量数据库
+langchain-chroma>=0.1.4
+chromadb>=0.5.0
+
+# 文档处理
+markitdown>=0.0.1a2
+pypdf>=4.0.0
+pillow>=10.0.0
+
+# 模型相关
+dashscope>=1.19.0
+
+# 工具库
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+pydantic>=2.7.4
+
+# 日志和工具
+loguru>=0.7.2
