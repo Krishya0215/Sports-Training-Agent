@@ -41,6 +41,24 @@
         <div class="chat-header">
           <div class="header-info">
             <h2>{{ currentChat !== null ? `对话 #${currentChat + 1}` : '新对话' }}</h2>
+            <div class="mode-toggle">
+              <button 
+                class="mode-btn" 
+                :class="{ active: !useMultiAgent }"
+                @click="useMultiAgent = false"
+                title="单智能体模式"
+              >
+                🤖 单智能体
+              </button>
+              <button 
+                class="mode-btn" 
+                :class="{ active: useMultiAgent }"
+                @click="useMultiAgent = true"
+                title="多智能体协同模式"
+              >
+                👥 多智能体
+              </button>
+            </div>
           </div>
           <button v-if="messages.length > 0" class="btn btn-secondary" @click="newChat">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -132,6 +150,7 @@ const messagesContainer = ref(null)
 const inputRef = ref(null)
 const chatHistory = ref([])
 const currentChat = ref(null)
+const useMultiAgent = ref(false)  // 多智能体模式开关
 
 const suggestions = [
   '什么是有氧运动？',
@@ -180,7 +199,14 @@ const sendMessage = async (text = null) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ question: content })
+      body: JSON.stringify({ 
+        question: content,
+        use_multi_agent: useMultiAgent.value,
+        user_profile: {
+          fitness_level: '中级',
+          goals: ['健康', '增强体质']
+        }
+      })
     })
     
     if (!response.ok) {
@@ -496,7 +522,38 @@ onMounted(async () => {
 .header-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+
+.mode-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mode-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.mode-btn.active {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .chat-header h2 {

@@ -24,7 +24,8 @@ sports-training-system/
 │   └── README.md             # 前端文档
 │
 ├── agent/                      # Agent模块
-│   ├── graph_agent.py         # LangGraph Agent
+│   ├── graph_agent.py         # LangGraph单智能体
+│   ├── multi_agent_system.py # 多智能体协同系统
 │   └── tools/                 # Agent工具
 │
 ├── config/                     # 配置文件
@@ -108,15 +109,23 @@ Vue 3前端应用，提供用户界面。
 
 ### Agent（智能体）
 
-基于LangGraph的智能Agent实现。
+基于LangGraph的智能Agent实现，支持单智能体和多智能体协同模式。
 
 **核心文件：**
-- `graph_agent.py`：Agent主逻辑
+- `graph_agent.py`：单智能体问答系统
+- `multi_agent_system.py`：多智能体协同训练支持系统
+  - 训练规划教练：制定科学训练计划
+  - 技术指导教练：提供动作指导和姿势分析
+  - 体能评估教练：分析身体状态与疲劳程度
+  - 运动康复教练：提供损伤预防与恢复建议
+  - 安全督导教练：识别风险因素并提供安全提示
 - `tools/agent_tools.py`：Agent工具集
 
 **功能：**
 - 状态管理
 - 工作流编排
+- 多智能体协作
+- 意图识别与路由
 - 工具调用
 
 ### RAG（检索增强生成）
@@ -184,6 +193,7 @@ RAG核心功能实现。
 
 ## 数据流
 
+### 单智能体模式
 ```
 用户输入
     ↓
@@ -191,11 +201,32 @@ RAG核心功能实现。
     ↓
 API接口 (FastAPI)
     ↓
-Agent (LangGraph)
+单智能体 (LangGraph)
     ↓
 记忆管理 + RAG检索
     ↓
 LLM生成答案
+    ↓
+返回前端展示
+```
+
+### 多智能体协同模式
+```
+用户输入
+    ↓
+前端 (Vue)
+    ↓
+API接口 (FastAPI)
+    ↓
+多智能体系统 (LangGraph)
+    ↓
+知识检索 → 意图分析 → 教练路由
+    ↓
+训练规划教练 → 技术指导教练 → 体能评估教练 → 运动康复教练 → 安全督导教练
+    ↓
+综合响应生成
+    ↓
+记忆系统更新
     ↓
 返回前端展示
 ```

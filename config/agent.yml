@@ -2,6 +2,26 @@
 agent_name: sports_training_qa_agent
 description: 运动训练知识问答Agent
 
+# 多智能体系统配置
+multi_agent:
+  enabled: true
+  coaches:
+    - name: planning_coach
+      role: 训练规划教练
+      description: 根据用户目标、能力和历史数据制定科学训练计划并动态优化
+    - name: technique_coach
+      role: 技术指导教练
+      description: 提供规范的动作指导和详细的姿势分析
+    - name: fitness_coach
+      role: 体能评估教练
+      description: 分析用户身体状态与疲劳程度，判断训练适宜性
+    - name: recovery_coach
+      role: 运动康复教练
+      description: 针对运动损伤风险或已出现的伤痛提供预防措施与恢复建议
+    - name: safety_coach
+      role: 安全督导教练
+      description: 识别训练过程中的潜在风险因素，提高训练安全性
+
 # LangGraph配置
 max_iterations: 10
 recursion_limit: 25

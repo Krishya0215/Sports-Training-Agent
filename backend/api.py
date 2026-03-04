@@ -17,6 +17,7 @@ import asyncio
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agent.graph_agent import SportsTrainingAgent
+from agent.multi_agent_system import MultiAgentTrainingSystem
 from utils.logger_handler import logger
 
 app = FastAPI(
@@ -36,12 +37,51 @@ app.add_middleware(
 
 # 全局Agent实例
 agent = None
+multi_agent_system = None
 chat_history = []
+
+# 数据存储（生产环境应使用数据库）
+training_plans = []  # 训练计划
+training_records = []  # 训练记录
+users = {  # 用户数据
+    "user": {"username": "user", "password": "user123", "role": "user"},
+    "admin": {"username": "admin", "password": "admin123", "role": "admin"}
+}
 
 
 class QueryRequest(BaseModel):
     """查询请求模型"""
     question: str
+    use_multi_agent: bool = False  # 是否使用多智能体系统
+    user_profile: Optional[Dict] = None  # 用户档案
+
+
+class TrainingPlan(BaseModel):
+    """训练计划模型"""
+    title: str
+    content: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    goal: Optional[str] = None
+    created_from_ai: bool = False  # 是否从AI回复生成
+
+
+class TrainingRecord(BaseModel):
+    """训练记录模型"""
+    date: str
+    training_type: str
+    duration: Optional[int] = None  # 分钟
+    intensity: Optional[str] = None  # 低/中/高
+    feedback: Optional[str] = None  # 用户反馈
+    fatigue_level: Optional[int] = None  # 疲劳度 1-5
+    pain_level: Optional[int] = None  # 疼痛度 1-5
+    notes: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    """登录请求模型"""
+    username: str
+    password: str
 
 
 class QueryResponse(BaseModel):
@@ -61,10 +101,14 @@ class MemorySummary(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化Agent"""
-    global agent
+    global agent, multi_agent_system
     logger.info("正在初始化Agent...")
     agent = SportsTrainingAgent()
     logger.info("Agent初始化完成")
+    
+    logger.info("正在初始化多智能体系统...")
+    multi_agent_system = MultiAgentTrainingSystem()
+    logger.info("多智能体系统初始化完成")
 
 
 @app.get("/")
@@ -81,6 +125,7 @@ async def root():
 async def query(request: QueryRequest):
     """
     处理用户问题查询（流式响应）
+    支持单智能体和多智能体模式
     
     Args:
         request: 包含问题的请求对象
@@ -90,21 +135,49 @@ async def query(request: QueryRequest):
     """
     async def generate():
         try:
-            if not agent:
-                yield f"data: {json.dumps({'error': 'Agent未初始化'}, ensure_ascii=False)}\n\n"
-                return
-            
-            logger.info(f"收到查询: {request.question}")
-            
-            # 获取完整答案
-            answer = agent.query(request.question)
-            
-            # 记录到历史
-            chat_history.append({
-                "question": request.question,
-                "answer": answer,
-                "timestamp": datetime.now()
-            })
+            # 根据请求选择使用单智能体或多智能体系统
+            if request.use_multi_agent:
+                if not multi_agent_system:
+                    yield f"data: {json.dumps({'error': '多智能体系统未初始化'}, ensure_ascii=False)}\n\n"
+                    return
+                
+                logger.info(f"收到多智能体查询: {request.question}")
+                
+                # 使用多智能体系统处理
+                result = multi_agent_system.process_request(
+                    request.question,
+                    request.user_profile
+                )
+                
+                answer = result["response"]
+                workflow = result.get("workflow", [])
+                
+                # 记录到历史
+                chat_history.append({
+                    "question": request.question,
+                    "answer": answer,
+                    "timestamp": datetime.now(),
+                    "mode": "multi_agent",
+                    "workflow": workflow
+                })
+                
+            else:
+                if not agent:
+                    yield f"data: {json.dumps({'error': 'Agent未初始化'}, ensure_ascii=False)}\n\n"
+                    return
+                
+                logger.info(f"收到单智能体查询: {request.question}")
+                
+                # 使用单智能体处理
+                answer = agent.query(request.question)
+                
+                # 记录到历史
+                chat_history.append({
+                    "question": request.question,
+                    "answer": answer,
+                    "timestamp": datetime.now(),
+                    "mode": "single_agent"
+                })
             
             # 模拟流式输出，逐字发送
             words = answer
@@ -391,9 +464,104 @@ async def health_check():
     return {
         "status": "healthy",
         "agent_initialized": agent is not None,
+        "multi_agent_initialized": multi_agent_system is not None,
         "chat_history_count": len(chat_history),
         "timestamp": datetime.now()
     }
+
+
+@app.post("/api/multi-agent/query")
+async def multi_agent_query(request: QueryRequest):
+    """
+    多智能体系统专用查询接口（非流式）
+    
+    Args:
+        request: 包含问题和用户档案的请求对象
+        
+    Returns:
+        包含答案、工作流和参与教练的响应
+    """
+    try:
+        if not multi_agent_system:
+            raise HTTPException(status_code=500, detail="多智能体系统未初始化")
+        
+        logger.info(f"收到多智能体查询: {request.question}")
+        
+        result = multi_agent_system.process_request(
+            request.question,
+            request.user_profile
+        )
+        
+        # 记录到历史
+        chat_history.append({
+            "question": request.question,
+            "answer": result["response"],
+            "timestamp": datetime.now(),
+            "mode": "multi_agent",
+            "workflow": result.get("workflow", []),
+            "coaches": result.get("coaches_involved", "unknown")
+        })
+        
+        return {
+            "answer": result["response"],
+            "workflow": result.get("workflow", []),
+            "coaches_involved": result.get("coaches_involved", "unknown"),
+            "timestamp": datetime.now()
+        }
+    except Exception as e:
+        logger.error(f"多智能体查询失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/multi-agent/coaches")
+async def get_coaches_info():
+    """
+    获取所有教练的信息
+    
+    Returns:
+        教练列表及其职责
+    """
+    try:
+        coaches = [
+            {
+                "name": "训练规划教练",
+                "role": "planning_coach",
+                "description": "根据用户目标、能力和历史数据制定科学训练计划并动态优化",
+                "icon": "📋"
+            },
+            {
+                "name": "技术指导教练",
+                "role": "technique_coach",
+                "description": "提供规范的动作指导和详细的姿势分析",
+                "icon": "🎯"
+            },
+            {
+                "name": "体能评估教练",
+                "role": "fitness_coach",
+                "description": "分析用户身体状态与疲劳程度，判断训练适宜性",
+                "icon": "💪"
+            },
+            {
+                "name": "运动康复教练",
+                "role": "recovery_coach",
+                "description": "针对运动损伤风险或已出现的伤痛提供预防措施与恢复建议",
+                "icon": "🏥"
+            },
+            {
+                "name": "安全督导教练",
+                "role": "safety_coach",
+                "description": "识别训练过程中的潜在风险因素，提高训练安全性",
+                "icon": "⚠️"
+            }
+        ]
+        
+        return {
+            "coaches": coaches,
+            "total": len(coaches)
+        }
+    except Exception as e:
+        logger.error(f"获取教练信息失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
