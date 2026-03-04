@@ -29,6 +29,18 @@
 
 ```
 .
+├── backend/                    # 后端服务
+│   ├── api.py                 # FastAPI接口
+│   ├── requirements.txt       # Python依赖
+│   └── README.md             # 后端文档
+├── frontend/                   # 前端应用
+│   ├── src/                   # 源代码
+│   │   ├── api/              # API接口
+│   │   ├── components/       # 公共组件
+│   │   ├── views/            # 页面视图
+│   │   └── router/           # 路由配置
+│   ├── package.json
+│   └── README.md             # 前端文档
 ├── agent/                      # Agent模块
 │   └── graph_agent.py         # LangGraph Agent实现
 ├── config/                     # 配置文件
@@ -43,34 +55,59 @@
 │   ├── .env                   # 环境变量（API密钥）
 │   └── factory.py             # 模型工厂
 ├── prompts/                    # 提示词模板
-│   ├── answer_generation_prompt.txt
-│   ├── hyde_prompt.txt
-│   ├── memory_summary_prompt.txt
-│   ├── multi_query_prompt.txt
-│   └── rag_qa_prompt.txt
 ├── rag/                        # RAG模块
 │   ├── advanced_retriever.py  # 高级检索器（MQE+HyDE）
 │   ├── document_processor.py  # 智能文档处理器
 │   └── vector_store.py        # 向量存储服务
 ├── utils/                      # 工具模块
-│   ├── config_handler.py      # 配置处理
-│   ├── file_handler.py        # 文件处理
-│   ├── logger_handler.py      # 日志处理
-│   ├── path_tool.py           # 路径工具
-│   └── prompt_loader.py       # 提示词加载器
-├── main.py                     # 主程序入口
-└── requirements.txt            # 依赖包
+├── main.py                     # 命令行入口
+├── package.json                # 项目配置
+└── README.md                   # 本文件
 ```
 
-## 安装
+## 快速开始
 
-### 1. 安装依赖
+### Windows用户（最简单）
+
+1. 双击 `安装依赖.bat` 安装依赖
+2. 编辑 `model/.env` 配置API密钥
+3. 双击 `启动后端.bat` 启动后端
+4. 双击 `启动前端.bat` 启动前端
+5. 访问 http://localhost:3000
+
+### 跨平台方式
+
+**安装依赖：**
+```bash
+# 前端
+cd frontend && npm install
+
+# 后端
+cd backend && pip install -r requirements.txt
+```
+
+**启动服务（需要两个终端）：**
+```bash
+# 终端1：后端
+cd backend && python api.py
+
+# 终端2：前端
+cd frontend && npm run dev
+```
+
+**访问：**
+- 前端界面：http://localhost:3000
+- 后端API：http://localhost:8000
+- API文档：http://localhost:8000/docs
+
+### 命令行模式
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
+python main.py
 ```
 
-### 2. 配置环境变量
+## 配置
 
 在 `model/.env` 文件中配置API密钥：
 
@@ -78,25 +115,22 @@ pip install -r requirements.txt
 DASHSCOPE_API_KEY=your_api_key_here
 ```
 
-### 3. 准备知识库
+获取API密钥：https://dashscope.console.aliyun.com/
 
-将运动训练相关的PDF、Markdown或文本文件放入 `data/` 目录。
+## 功能特性
 
-## 使用方法
+### Web界面
+- 🎨 现代化UI设计，简洁高级
+- 💬 实时智能问答
+- 📚 知识库管理
+- 🧠 记忆系统可视化
+- 📊 统计数据展示
 
-### 启动主程序
-
-```bash
-python main.py
-```
-
-### 功能菜单
-
-1. **加载知识库**: 首次使用或更新知识库时执行
-2. **开始问答**: 进入交互式问答模式
-3. **查看记忆摘要**: 查看各层记忆的状态
-4. **清空工作记忆**: 清除当前对话上下文
-5. **退出**: 退出程序
+### 命令行界面
+1. **加载知识库**: 首次使用或更新知识库
+2. **开始问答**: 交互式问答模式
+3. **查看记忆摘要**: 查看各层记忆状态
+4. **清空工作记忆**: 清除对话上下文
 
 ### 编程接口
 
@@ -106,7 +140,7 @@ from agent.graph_agent import SportsTrainingAgent
 # 初始化Agent
 agent = SportsTrainingAgent()
 
-# 加载知识库（首次运行）
+# 加载知识库
 agent.load_knowledge_base()
 
 # 查询

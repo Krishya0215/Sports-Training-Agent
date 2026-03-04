@@ -11,11 +11,12 @@ from rag.document_processor import DocumentProcessor
 
 class VectorStoreService:
     def __init__(self):
-        # 初始化向量存储
+        # 初始化向量存储（使用绝对路径）
+        persist_dir = get_abs_path(chroma_conf["persist_directory"])
         self.vector_store = Chroma(
             collection_name=chroma_conf["collection_name"],
             embedding_function=embedding_model,
-            persist_directory=chroma_conf["persist_directory"]
+            persist_directory=persist_dir
         )
 
         # 初始化文档处理器

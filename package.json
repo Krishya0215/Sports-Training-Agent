@@ -1,0 +1,22 @@
+{
+  "name": "sports-training-system",
+  "version": "1.0.0",
+  "description": "运动训练知识问答系统",
+  "scripts": {
+    "preinstall": "echo 正在检查依赖...",
+    "install:frontend": "cd frontend && npm install",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "dev:backend": "cd backend && python api.py",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "sports",
+    "training",
+    "ai",
+    "rag",
+    "langchain"
+  ],
+  "author": "",
+  "license": "MIT"
+}
