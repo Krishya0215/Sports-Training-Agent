@@ -55,7 +55,7 @@
         
         <div class="memory-card card">
           <div class="memory-header">
-            <div class="memory-icon" style="background: rgba(255, 149, 0, 0.1); color: #ff9500;">
+            <div class="memory-icon" style="background: rgba(0, 113, 227, 0.15); color: #0071e3;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
                 <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -80,7 +80,7 @@
         
         <div class="memory-card card">
           <div class="memory-header">
-            <div class="memory-icon" style="background: rgba(52, 199, 89, 0.1); color: #34c759;">
+            <div class="memory-icon" style="background: rgba(0, 113, 227, 0.1); color: #0071e3;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
               </svg>
@@ -104,7 +104,7 @@
         
         <div class="memory-card card">
           <div class="memory-header">
-            <div class="memory-icon" style="background: rgba(175, 82, 222, 0.1); color: #af52de;">
+            <div class="memory-icon" style="background: rgba(0, 113, 227, 0.2); color: #0071e3;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
                 <path d="M3 9H21M9 21V9" stroke="currentColor" stroke-width="2"/>

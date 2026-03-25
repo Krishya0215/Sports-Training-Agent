@@ -29,9 +29,15 @@
 - **工作记忆**: 管理当前任务和对话上下文（最近N轮）
 - **情景记忆**: 记录学习事件和查询历史
 - **语义记忆**: 存储概念知识和理解
-- **感知记忆**: 处理文档特征和多模态信息
+- **感知记忆**: 处理文档特征和多模态信息 ⭐ NEW
 
-### 5. LangGraph工作流
+### 5. 多模态处理能力 ⭐ NEW
+- **图像提取**: 从PDF中自动提取图像
+- **图像理解**: 使用通义千问VL生成专业图像描述
+- **统一检索**: 文本和图像描述在同一向量空间检索
+- **感知记忆**: 存储和管理图像描述及元数据
+
+### 6. LangGraph工作流
 - 状态管理和节点编排
 - 可扩展的图结构设计
 - 灵活的流程控制
@@ -67,11 +73,12 @@
 │   └── memory_manager.py      # 多层次记忆管理器
 ├── model/                      # 模型工厂
 │   ├── .env                   # 环境变量（API密钥）
-│   └── factory.py             # 模型工厂
+│   ├── factory.py             # 模型工厂
+│   └── multimodal_model.py    # 多模态LLM服务 ⭐ NEW
 ├── prompts/                    # 提示词模板
 ├── rag/                        # RAG模块
 │   ├── advanced_retriever.py  # 高级检索器（MQE+HyDE）
-│   ├── document_processor.py  # 智能文档处理器
+│   ├── document_processor.py  # 智能文档处理器（支持多模态）⭐ NEW
 │   └── vector_store.py        # 向量存储服务
 ├── utils/                      # 工具模块
 ├── main.py                     # 命令行入口
@@ -80,6 +87,21 @@
 ```
 
 ## 快速开始
+
+### 体验多模态功能 ⭐ 最新
+
+```bash
+# 1. 检查环境配置
+python check_multimodal_setup.py
+
+# 2. 运行测试
+python test_multimodal.py
+
+# 3. 查看示例
+python examples/multimodal_example.py
+```
+
+详细文档：[多模态功能使用指南.md](./多模态功能使用指南.md)
 
 ### 体验多智能体系统 ⭐ 推荐
 
@@ -254,7 +276,8 @@ separators: ["\n## ", "\n### ", "\n#### ", "\n\n", "\n", "。"]
 - **LangGraph**: 0.2.0 - 状态图工作流
 - **ChromaDB**: 0.5.0 - 向量数据库
 - **MarkItDown**: 0.0.1a2 - 文档转换
-- **DashScope**: 1.19.0 - 阿里云模型API
+- **PyMuPDF**: 1.23.0 - PDF图像提取 ⭐ NEW
+- **DashScope**: 1.19.0 - 阿里云模型API（含多模态）⭐ NEW
 
 ## 扩展建议
 
@@ -403,6 +426,7 @@ multi_agent:
 
 - [项目结构说明](PROJECT_STRUCTURE.md)
 - [快速开始指南](QUICKSTART.md)
+- [多模态功能使用指南](多模态功能使用指南.md) ⭐ NEW
 - [多智能体系统使用指南](多智能体训练系统使用指南.md)
 - [后端API文档](backend/README.md)
 - [前端开发文档](frontend/README.md)

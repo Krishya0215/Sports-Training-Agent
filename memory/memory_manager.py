@@ -139,6 +139,7 @@ class PerceptualMemory:
     def __init__(self):
         self.document_features: Dict[str, Any] = {}
         self.image_descriptions: Dict[str, str] = {}
+        self.image_metadata: Dict[str, Dict[str, Any]] = {}
         logger.info("感知记忆初始化")
     
     def add_document_features(self, doc_id: str, features: Dict[str, Any]):
@@ -149,9 +150,21 @@ class PerceptualMemory:
         }
         logger.debug(f"感知记忆添加文档特征: {doc_id}")
     
-    def add_image_description(self, image_id: str, description: str):
-        """添加图像描述"""
+    def add_image_description(self, image_id: str, description: str, metadata: Optional[Dict[str, Any]] = None):
+        """
+        添加图像描述
+        
+        Args:
+            image_id: 图像唯一标识
+            description: 图像的文本描述
+            metadata: 图像元数据（来源、页码、模型等）
+        """
         self.image_descriptions[image_id] = description
+        if metadata:
+            self.image_metadata[image_id] = {
+                **metadata,
+                "timestamp": datetime.now().isoformat()
+            }
         logger.debug(f"感知记忆添加图像描述: {image_id}")
     
     def get_document_features(self, doc_id: str) -> Optional[Dict[str, Any]]:
@@ -161,6 +174,34 @@ class PerceptualMemory:
     def get_image_description(self, image_id: str) -> Optional[str]:
         """获取图像描述"""
         return self.image_descriptions.get(image_id)
+    
+    def get_image_metadata(self, image_id: str) -> Optional[Dict[str, Any]]:
+        """获取图像元数据"""
+        return self.image_metadata.get(image_id)
+    
+    def get_all_image_descriptions(self) -> Dict[str, str]:
+        """获取所有图像描述"""
+        return self.image_descriptions
+    
+    def search_images_by_source(self, source: str) -> List[Dict[str, Any]]:
+        """
+        根据来源文档搜索图像
+        
+        Args:
+            source: 文档来源路径
+            
+        Returns:
+            匹配的图像信息列表
+        """
+        results = []
+        for image_id, metadata in self.image_metadata.items():
+            if metadata.get("source") == source:
+                results.append({
+                    "image_id": image_id,
+                    "description": self.image_descriptions.get(image_id),
+                    "metadata": metadata
+                })
+        return results
 
 
 class MemoryManager:
@@ -207,6 +248,17 @@ class MemoryManager:
                 metadata=metadata
             )
         
+        # 感知记忆 - 记录文档特征
+        if self.perceptual_memory and metadata:
+            # 提取图像相关信息
+            if "image_descriptions" in metadata:
+                for img_info in metadata["image_descriptions"]:
+                    self.perceptual_memory.add_image_description(
+                        image_id=img_info.get("image_id"),
+                        description=img_info.get("description"),
+                        metadata=img_info.get("metadata")
+                    )
+        
         logger.info("交互记录完成")
     
     def get_context_for_query(self) -> str:
@@ -219,6 +271,7 @@ class MemoryManager:
             "working_memory_size": len(self.working_memory.messages),
             "episodic_memory_size": len(self.episodic_memory.episodes) if self.episodic_memory else 0,
             "semantic_concepts": len(self.semantic_memory.concepts) if self.semantic_memory else 0,
-            "perceptual_documents": len(self.perceptual_memory.document_features) if self.perceptual_memory else 0
+            "perceptual_documents": len(self.perceptual_memory.document_features) if self.perceptual_memory else 0,
+            "perceptual_images": len(self.perceptual_memory.image_descriptions) if self.perceptual_memory else 0
         }
         return summary

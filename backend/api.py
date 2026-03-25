@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agent.graph_agent import SportsTrainingAgent
 from agent.multi_agent_system import MultiAgentTrainingSystem
 from utils.logger_handler import logger
+from backend.auth import AuthService
 
 app = FastAPI(
     title="运动训练知识问答API",
@@ -66,6 +67,26 @@ class TrainingPlan(BaseModel):
     created_from_ai: bool = False  # 是否从AI回复生成
 
 
+    metadata: Optional[Dict] = None
+    selected_weekdays: Optional[List[str]] = None
+    source_prompt: Optional[str] = None
+    ai_response: Optional[str] = None
+
+
+class TrainingPlanUpdate(BaseModel):
+    """璁粌璁″垝鏇存柊妯″瀷"""
+    title: Optional[str] = None
+    content: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    goal: Optional[str] = None
+    created_from_ai: Optional[bool] = None  # 鏄惁浠嶢I鍥炲鐢熸垚
+    metadata: Optional[Dict] = None
+    selected_weekdays: Optional[List[str]] = None
+    source_prompt: Optional[str] = None
+    ai_response: Optional[str] = None
+
+
 class TrainingRecord(BaseModel):
     """训练记录模型"""
     date: str
@@ -80,8 +101,29 @@ class TrainingRecord(BaseModel):
 
 class LoginRequest(BaseModel):
     """登录请求模型"""
-    username: str
+    account: str  # 账号（用户名或邮箱）
     password: str
+
+
+class RegisterRequest(BaseModel):
+    """注册请求模型"""
+    username: str
+    email: str
+    password: str
+    confirm_password: str
+
+
+class VerificationCodeRequest(BaseModel):
+    """验证码请求模型"""
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """重置密码请求模型"""
+    email: str
+    code: str
+    new_password: str
+    confirm_password: str
 
 
 class QueryResponse(BaseModel):
@@ -126,6 +168,7 @@ async def query(request: QueryRequest):
     """
     处理用户问题查询（流式响应）
     支持单智能体和多智能体模式
+    流式输出思考过程和答案
     
     Args:
         request: 包含问题的请求对象
@@ -138,7 +181,7 @@ async def query(request: QueryRequest):
             # 根据请求选择使用单智能体或多智能体系统
             if request.use_multi_agent:
                 if not multi_agent_system:
-                    yield f"data: {json.dumps({'error': '多智能体系统未初始化'}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'type': 'answer', 'content': '多智能体系统未初始化', 'done': True}, ensure_ascii=False)}\n\n"
                     return
                 
                 logger.info(f"收到多智能体查询: {request.question}")
@@ -149,55 +192,93 @@ async def query(request: QueryRequest):
                     request.user_profile
                 )
                 
+                thinking = result.get("thinking", "")
                 answer = result["response"]
-                workflow = result.get("workflow", [])
-                
-                # 记录到历史
-                chat_history.append({
-                    "question": request.question,
-                    "answer": answer,
-                    "timestamp": datetime.now(),
-                    "mode": "multi_agent",
-                    "workflow": workflow
-                })
                 
             else:
                 if not agent:
-                    yield f"data: {json.dumps({'error': 'Agent未初始化'}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'type': 'answer', 'content': 'Agent未初始化', 'done': True}, ensure_ascii=False)}\n\n"
                     return
                 
                 logger.info(f"收到单智能体查询: {request.question}")
                 
                 # 使用单智能体处理
-                answer = agent.query(request.question)
+                result = agent.query(request.question)
+                thinking = result.get("thinking", "")
+                answer = result.get("answer", "")
+            
+            # 先流式输出思考过程
+            if thinking:
+                yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': False}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.1)
                 
-                # 记录到历史
-                chat_history.append({
-                    "question": request.question,
-                    "answer": answer,
-                    "timestamp": datetime.now(),
-                    "mode": "single_agent"
-                })
+                thinking_lines = thinking.split('\n')
+                for line in thinking_lines:
+                    if line.strip():
+                        # 每行思考过程逐字输出
+                        chunk_size = 2
+                        for i in range(0, len(line), chunk_size):
+                            chunk = line[i:i + chunk_size]
+                            data = {
+                                "type": "thinking",
+                                "content": chunk,
+                                "done": False
+                            }
+                            yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+                            await asyncio.sleep(0.02)
+                        
+                        # 每行末尾加换行
+                        data = {
+                            "type": "thinking",
+                            "content": "\n",
+                            "done": False
+                        }
+                        yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+                        await asyncio.sleep(0.05)
+                
+                # 思考过程完成
+                yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.3)  # 思考和答案之间的延迟
             
-            # 模拟流式输出，逐字发送
-            words = answer
+            # 再流式输出最终答案
+            yield f"data: {json.dumps({'type': 'answer', 'content': '', 'done': False}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.05)
+            
             chunk_size = 2  # 每次发送的字符数
-            
-            for i in range(0, len(words), chunk_size):
-                chunk = words[i:i + chunk_size]
+            for i in range(0, len(answer), chunk_size):
+                chunk = answer[i:i + chunk_size]
                 data = {
+                    "type": "answer",
                     "content": chunk,
                     "done": False
                 }
                 yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.03)  # 控制输出速度
             
+            # 记录到历史
+            chat_history.append({
+                "question": request.question,
+                "answer": answer,
+                "thinking": thinking,
+                "timestamp": datetime.now(),
+                "mode": "multi_agent" if request.use_multi_agent else "single_agent"
+            })
+            
             # 发送完成信号
-            yield f"data: {json.dumps({'content': '', 'done': True}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'answer', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
             
         except Exception as e:
-            logger.error(f"查询失败: {e}")
-            yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+            logger.error(f"查询失败: {e}", exc_info=True)
+            # 发送错误信息
+            error_thinking = f"❌ **系统错误**\n\n{str(e)[:100]}"
+            error_answer = f"抱歉，处理您的请求时出现错误。请稍后重试。\n\n技术信息：{str(e)[:150]}"
+            
+            # 流式发送思考过程\
+            yield f"data: {json.dumps({'type': 'thinking', 'content': error_thinking, 'done': True}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.2)
+            
+            # 流式发送错误答案
+            yield f"data: {json.dumps({'type': 'answer', 'content': error_answer, 'done': True}, ensure_ascii=False)}\n\n"
     
     return StreamingResponse(
         generate(),
@@ -226,12 +307,17 @@ async def query_sync(request: QueryRequest):
             raise HTTPException(status_code=500, detail="Agent未初始化")
         
         logger.info(f"收到查询: {request.question}")
-        answer = agent.query(request.question)
+        result = agent.query(request.question)
+        
+        # 提取answer和thinking
+        answer = result.get("answer", "") if isinstance(result, dict) else result
+        thinking = result.get("thinking", "") if isinstance(result, dict) else ""
         
         # 记录到历史
         chat_history.append({
             "question": request.question,
             "answer": answer,
+            "thinking": thinking,
             "timestamp": datetime.now()
         })
         
@@ -504,6 +590,7 @@ async def multi_agent_query(request: QueryRequest):
         
         return {
             "answer": result["response"],
+            "structured_response": result.get("structured_response", {}),
             "workflow": result.get("workflow", []),
             "coaches_involved": result.get("coaches_involved", "unknown"),
             "timestamp": datetime.now()
@@ -511,6 +598,108 @@ async def multi_agent_query(request: QueryRequest):
     except Exception as e:
         logger.error(f"多智能体查询失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/multi-agent/query/stream")
+async def multi_agent_query_stream(request: QueryRequest):
+    """
+    多智能体系统流式查询接口
+    实时返回每个教练的处理进度和结果
+    """
+    async def generate():
+        try:
+            if not multi_agent_system:
+                yield f"data: {json.dumps({'error': '多智能体系统未初始化'}, ensure_ascii=False)}\n\n"
+                return
+            
+            logger.info(f"收到多智能体流式查询: {request.question}")
+            
+            # 发送开始信号
+            yield f"data: {json.dumps({'type': 'start', 'message': '开始处理您的问题...'}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.1)
+            
+            # 发送检索信号
+            yield f"data: {json.dumps({'type': 'progress', 'step': 'retrieve', 'message': '🔍 正在检索相关知识...'}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.1)
+            
+            # 用于收集教练结果的列表
+            coach_results = []
+            coach_count = 0
+            
+            # 定义流式回调函数
+            def stream_callback(data):
+                nonlocal coach_count
+                if data.get("type") == "coach_result":
+                    coach_count += 1
+                    coach_results.append(data["coach"])
+                    # 注意：这里不能直接yield，需要存储结果后在主流程中yield
+            
+            # 调用多智能体系统（带回调）
+            result = multi_agent_system.process_request(
+                request.question,
+                request.user_profile,
+                stream_callback=stream_callback
+            )
+            
+            # 发送意图分析
+            yield f"data: {json.dumps({'type': 'progress', 'step': 'intent', 'message': '🧠 分析问题意图...'}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.1)
+            
+            # 获取结构化响应
+            structured_response = result.get("structured_response", {})
+            coaches = structured_response.get("coaches", [])
+            
+            # 逐个发送教练的处理进度和结果
+            for i, coach in enumerate(coaches, 1):
+                # 发送处理中
+                yield f"data: {json.dumps({'type': 'coach_start', 'coach': coach['name'], 'icon': coach['icon'], 'progress': f'{i}/{len(coaches)}'}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.3)
+                
+                # 发送教练结果
+                yield f"data: {json.dumps({'type': 'coach_result', 'coach': coach, 'progress': f'{i}/{len(coaches)}'}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.2)
+            
+            # 发送综合建议
+            yield f"data: {json.dumps({'type': 'progress', 'step': 'synthesize', 'message': '💡 生成综合建议...'}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.3)
+            
+            # 发送最终结果
+            final_data = {
+                "type": "complete",
+                "answer": result["response"],
+                "structured_response": structured_response,
+                "workflow": result.get("workflow", []),
+                "coaches_involved": result.get("coaches_involved", "unknown")
+            }
+            yield f"data: {json.dumps(final_data, ensure_ascii=False)}\n\n"
+            
+            # 记录到历史
+            chat_history.append({
+                "question": request.question,
+                "answer": result["response"],
+                "timestamp": datetime.now(),
+                "mode": "multi_agent_stream",
+                "workflow": result.get("workflow", []),
+                "coaches": result.get("coaches_involved", "unknown")
+            })
+            
+            logger.info("多智能体流式查询完成")
+            
+        except Exception as e:
+            logger.error(f"多智能体流式查询失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 
 @app.get("/api/multi-agent/coaches")
@@ -562,6 +751,483 @@ async def get_coaches_info():
     except Exception as e:
         logger.error(f"获取教练信息失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 用户认证接口 ====================
+
+@app.post("/api/auth/register")
+async def register(request: RegisterRequest):
+    """用户注册"""
+    try:
+        # 验证两次密码是否一致
+        if request.password != request.confirm_password:
+            raise HTTPException(status_code=400, detail="两次输入的密码不一致")
+        
+        result = AuthService.register(
+            username=request.username,
+            email=request.email,
+            password=request.password
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+        
+        logger.info(f"用户注册成功: {request.email}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"注册失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    """用户登录"""
+    try:
+        result = AuthService.login(
+            account=request.account,
+            password=request.password
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=401, detail=result["message"])
+        
+        logger.info(f"用户登录成功: {request.account}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"登录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/logout")
+async def logout(token: str):
+    """用户退出"""
+    try:
+        result = AuthService.logout(token)
+        logger.info(f"用户退出: {token[:10]}...")
+        return result
+    except Exception as e:
+        logger.error(f"退出失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/auth/verify")
+async def verify_token(token: str):
+    """验证token"""
+    try:
+        user = AuthService.verify_token(token)
+        if not user:
+            raise HTTPException(status_code=401, detail="token无效或已过期")
+        return {"success": True, "user": user}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"验证token失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/send-code")
+async def send_verification_code(request: VerificationCodeRequest):
+    """发送验证码"""
+    try:
+        result = AuthService.send_verification_code(request.email)
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+        
+        logger.info(f"验证码已发送: {request.email}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"发送验证码失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """重置密码"""
+    try:
+        # 验证两次密码是否一致
+        if request.new_password != request.confirm_password:
+            raise HTTPException(status_code=400, detail="两次输入的密码不一致")
+        
+        result = AuthService.reset_password(
+            email=request.email,
+            code=request.code,
+            new_password=request.new_password
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+        
+        logger.info(f"密码重置成功: {request.email}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"重置密码失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/complete-profile")
+async def complete_profile(email: str):
+    """标记用户资料已完成"""
+    try:
+        result = AuthService.update_profile_status(email, completed=True)
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+        
+        logger.info(f"用户资料已完成: {email}")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"更新资料状态失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 训练计划接口 ====================
+
+@app.post("/api/training/plans")
+async def create_training_plan(plan: TrainingPlan):
+    """创建训练计划"""
+    try:
+        plan_dict = plan.dict()
+        plan_dict["id"] = len(training_plans) + 1
+        plan_dict["created_at"] = datetime.now().isoformat()
+        training_plans.append(plan_dict)
+        
+        logger.info(f"创建训练计划: {plan.title}")
+        return {
+            "status": "success",
+            "plan": plan_dict
+        }
+    except Exception as e:
+        logger.error(f"创建训练计划失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/training/plans")
+async def get_training_plans():
+    """获取所有训练计划"""
+    try:
+        return {
+            "plans": training_plans,
+            "total": len(training_plans)
+        }
+    except Exception as e:
+        logger.error(f"获取训练计划失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/training/plans/{plan_id}")
+async def get_training_plan(plan_id: int):
+    """获取单个训练计划"""
+    try:
+        plan = next((p for p in training_plans if p["id"] == plan_id), None)
+        if not plan:
+            raise HTTPException(status_code=404, detail="训练计划不存在")
+        return plan
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取训练计划失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/training/plans/{plan_id}")
+async def update_training_plan(plan_id: int, payload: TrainingPlanUpdate):
+    """鏇存柊璁粌璁″垝"""
+    try:
+        plan = next((p for p in training_plans if p["id"] == plan_id), None)
+        if not plan:
+            raise HTTPException(status_code=404, detail="璁粌璁″垝涓嶅瓨鍦?")
+
+        updates = payload.dict(exclude_unset=True)
+        plan.update(updates)
+        plan["updated_at"] = datetime.now().isoformat()
+
+        logger.info(f"鏇存柊璁粌璁″垝: {plan_id}")
+        return {
+            "status": "success",
+            "plan": plan
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"鏇存柊璁粌璁″垝澶辫触: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/training/plans/{plan_id}")
+async def delete_training_plan(plan_id: int):
+    """删除训练计划"""
+    try:
+        global training_plans
+        training_plans = [p for p in training_plans if p["id"] != plan_id]
+        logger.info(f"删除训练计划: {plan_id}")
+        return {"status": "success", "message": "训练计划已删除"}
+    except Exception as e:
+        logger.error(f"删除训练计划失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 训练记录接口 ====================
+
+@app.post("/api/training/records")
+async def create_training_record(record: TrainingRecord):
+    """创建训练记录"""
+    try:
+        record_dict = record.dict()
+        record_dict["id"] = len(training_records) + 1
+        record_dict["created_at"] = datetime.now().isoformat()
+        training_records.append(record_dict)
+        
+        logger.info(f"创建训练记录: {record.training_type} - {record.date}")
+        
+        # 分析训练负荷并生成建议
+        suggestion = _analyze_training_load()
+        
+        return {
+            "status": "success",
+            "record": record_dict,
+            "suggestion": suggestion
+        }
+    except Exception as e:
+        logger.error(f"创建训练记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/training/records")
+async def get_training_records(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    training_type: Optional[str] = None
+):
+    """获取训练记录（支持筛选）"""
+    try:
+        filtered_records = training_records
+        
+        # 按日期筛选
+        if start_date:
+            filtered_records = [r for r in filtered_records if r["date"] >= start_date]
+        if end_date:
+            filtered_records = [r for r in filtered_records if r["date"] <= end_date]
+        
+        # 按训练类型筛选
+        if training_type:
+            filtered_records = [r for r in filtered_records if r["training_type"] == training_type]
+        
+        return {
+            "records": filtered_records,
+            "total": len(filtered_records)
+        }
+    except Exception as e:
+        logger.error(f"获取训练记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/training/records/{record_id}")
+async def get_training_record(record_id: int):
+    """获取单个训练记录"""
+    try:
+        record = next((r for r in training_records if r["id"] == record_id), None)
+        if not record:
+            raise HTTPException(status_code=404, detail="训练记录不存在")
+        return record
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取训练记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/training/records/{record_id}")
+async def delete_training_record(record_id: int):
+    """删除训练记录"""
+    try:
+        global training_records
+        training_records = [r for r in training_records if r["id"] != record_id]
+        logger.info(f"删除训练记录: {record_id}")
+        return {"status": "success", "message": "训练记录已删除"}
+    except Exception as e:
+        logger.error(f"删除训练记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 数据分析接口 ====================
+
+@app.get("/api/training/analytics/frequency")
+async def get_training_frequency(days: int = 30):
+    """获取训练频率趋势"""
+    try:
+        from datetime import datetime, timedelta
+        from collections import defaultdict
+        
+        # 计算日期范围
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # 统计每天的训练次数
+        frequency_map = defaultdict(int)
+        for record in training_records:
+            record_date = datetime.fromisoformat(record["date"])
+            if start_date <= record_date <= end_date:
+                date_str = record_date.strftime("%Y-%m-%d")
+                frequency_map[date_str] += 1
+        
+        # 生成完整的日期序列
+        dates = []
+        counts = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime("%Y-%m-%d")
+            dates.append(date_str)
+            counts.append(frequency_map.get(date_str, 0))
+            current_date += timedelta(days=1)
+        
+        return {
+            "dates": dates,
+            "counts": counts,
+            "total_trainings": sum(counts),
+            "average_per_week": sum(counts) / (days / 7) if days > 0 else 0
+        }
+    except Exception as e:
+        logger.error(f"获取训练频率失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/training/analytics/load")
+async def get_training_load(days: int = 30):
+    """获取训练负荷变化"""
+    try:
+        from datetime import datetime, timedelta
+        from collections import defaultdict
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # 计算每天的训练负荷（疲劳度 * 时长）
+        load_map = defaultdict(float)
+        for record in training_records:
+            record_date = datetime.fromisoformat(record["date"])
+            if start_date <= record_date <= end_date:
+                date_str = record_date.strftime("%Y-%m-%d")
+                fatigue = record.get("fatigue_level", 3)
+                duration = record.get("duration", 60)
+                load = fatigue * duration / 60  # 标准化为小时
+                load_map[date_str] += load
+        
+        # 生成完整的日期序列
+        dates = []
+        loads = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime("%Y-%m-%d")
+            dates.append(date_str)
+            loads.append(round(load_map.get(date_str, 0), 2))
+            current_date += timedelta(days=1)
+        
+        return {
+            "dates": dates,
+            "loads": loads,
+            "average_load": round(sum(loads) / len(loads), 2) if loads else 0
+        }
+    except Exception as e:
+        logger.error(f"获取训练负荷失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/training/analytics/summary")
+async def get_training_summary(period: str = "week"):
+    """获取训练总结（周/月）"""
+    try:
+        from datetime import datetime, timedelta
+        
+        end_date = datetime.now()
+        if period == "week":
+            start_date = end_date - timedelta(days=7)
+        elif period == "month":
+            start_date = end_date - timedelta(days=30)
+        else:
+            start_date = end_date - timedelta(days=7)
+        
+        # 筛选时间范围内的记录
+        period_records = [
+            r for r in training_records
+            if start_date <= datetime.fromisoformat(r["date"]) <= end_date
+        ]
+        
+        # 统计
+        total_trainings = len(period_records)
+        total_duration = sum(r.get("duration", 0) for r in period_records)
+        avg_fatigue = sum(r.get("fatigue_level", 0) for r in period_records) / total_trainings if total_trainings > 0 else 0
+        
+        # 按训练类型统计
+        type_counts = {}
+        for record in period_records:
+            t_type = record["training_type"]
+            type_counts[t_type] = type_counts.get(t_type, 0) + 1
+        
+        return {
+            "period": period,
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "total_trainings": total_trainings,
+            "total_duration": total_duration,
+            "average_fatigue": round(avg_fatigue, 2),
+            "training_types": type_counts
+        }
+    except Exception as e:
+        logger.error(f"获取训练总结失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _analyze_training_load() -> str:
+    """分析训练负荷并生成建议"""
+    try:
+        from datetime import datetime, timedelta
+        
+        # 分析最近2周的训练负荷
+        two_weeks_ago = datetime.now() - timedelta(days=14)
+        recent_records = [
+            r for r in training_records
+            if datetime.fromisoformat(r["date"]) >= two_weeks_ago
+        ]
+        
+        if len(recent_records) < 3:
+            return "训练数据较少，建议保持规律训练"
+        
+        # 计算平均疲劳度
+        avg_fatigue = sum(r.get("fatigue_level", 3) for r in recent_records) / len(recent_records)
+        
+        # 计算训练频率
+        training_frequency = len(recent_records) / 14  # 每天平均训练次数
+        
+        # 生成建议
+        if avg_fatigue >= 4 and training_frequency > 0.7:
+            return "⚠️ 你最近2周训练负荷偏高，建议降低强度或增加休息日"
+        elif avg_fatigue >= 4:
+            return "💡 疲劳度较高，建议适当降低训练强度"
+        elif training_frequency > 0.8:
+            return "💡 训练频率较高，注意合理安排休息"
+        elif avg_fatigue <= 2 and training_frequency < 0.4:
+            return "✅ 训练负荷适中，可以适当增加训练强度或频率"
+        else:
+            return "✅ 训练状态良好，继续保持"
+    except Exception as e:
+        logger.error(f"分析训练负荷失败: {e}")
+        return "训练状态分析中..."
 
 
 if __name__ == "__main__":

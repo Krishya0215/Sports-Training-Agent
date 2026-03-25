@@ -1,5 +1,5 @@
 <template>
-  <nav class="navbar">
+  <nav class="navbar" v-if="isAuthenticated">
     <div class="navbar-container">
       <div class="navbar-brand">
         <div class="logo">
@@ -10,32 +10,48 @@
         </div>
         <span class="brand-text">运动训练助手</span>
       </div>
-      
+
       <div class="navbar-menu">
-        <router-link to="/" class="nav-item">首页</router-link>
-        <router-link to="/chat" class="nav-item">问答</router-link>
-        <router-link to="/knowledge" class="nav-item">知识库</router-link>
-        <router-link to="/memory" class="nav-item">记忆</router-link>
+        <!-- <router-link to="/" class="nav-item">首页</router-link> -->
+        <router-link to="/chat" class="nav-item">AI教练</router-link>
+        <router-link to="/training-plan" class="nav-item">训练计划</router-link>
+        <!-- <router-link to="/training-record" class="nav-item">训练记录</router-link> -->
+        <!-- <router-link to="/analytics" class="nav-item">数据分析</router-link> -->
+        <!-- <router-link to="/knowledge" class="nav-item" v-if="isAdmin">知识库</router-link> -->
+        <!-- <router-link to="/memory" class="nav-item">记忆</router-link> -->
       </div>
-      
+
       <div class="navbar-actions">
-        <button class="icon-btn">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </button>
-        <button class="icon-btn">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M10 6V10L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </button>
-        <div class="avatar">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-            <circle cx="10" cy="7" r="3"/>
-            <path d="M4 18C4 14.6863 6.68629 12 10 12C13.3137 12 16 14.6863 16 18"/>
-          </svg>
+        <div class="user-menu" @click="toggleUserMenu" ref="userMenuRef">
+          <div class="avatar">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <circle cx="10" cy="7" r="3"/>
+              <path d="M4 18C4 14.6863 6.68629 12 10 12C13.3137 12 16 14.6863 16 18"/>
+            </svg>
+          </div>
+          <div class="user-info">
+            <span class="username">{{ user?.username || '用户' }}</span>
+            <span class="email">{{ user?.email || '' }}</span>
+          </div>
+
+          <!-- 用户菜单下拉 -->
+          <div class="user-dropdown" v-if="showUserMenu">
+            <div class="dropdown-item" @click="goToProfile">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="8" cy="5" r="2"/>
+                <path d="M4 13C4 11.3431 5.34315 10 7 10H9C10.6569 10 12 11.3431 12 13"/>
+              </svg>
+              <span>个人资料</span>
+            </div>
+            <div class="dropdown-item" @click="handleLogout">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M6 12H3V4H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M6 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M10 5L13 8L10 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>退出登录</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -43,6 +59,54 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const userMenuRef = ref(null)
+const showUserMenu = ref(false)
+
+// 计算属性
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+const user = computed(() => authStore.user)
+const isAdmin = computed(() => user.value?.role === 'admin')
+
+const toggleUserMenu = () => {
+  showUserMenu.value = !showUserMenu.value
+}
+
+const goToProfile = () => {
+  showUserMenu.value = false
+  // 跳转到个人资料页（待实现）
+  console.log('跳转到个人资料')
+}
+
+const handleLogout = async () => {
+  try {
+    await authStore.logout()
+    router.push('/login')
+  } catch (error) {
+    console.error('退出登录失败:', error)
+  }
+}
+
+// 点击外部关闭菜单
+const handleClickOutside = (event) => {
+  if (userMenuRef.value && !userMenuRef.value.contains(event.target)) {
+    showUserMenu.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
@@ -131,6 +195,21 @@
   color: var(--color-text-primary);
 }
 
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.user-menu:hover {
+  background: var(--color-bg);
+}
+
 .avatar {
   width: 36px;
   height: 36px;
@@ -140,11 +219,55 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.avatar:hover {
-  background: var(--color-border);
+.user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.email {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  min-width: 160px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: var(--color-bg);
+}
+
+.dropdown-item svg {
+  color: var(--color-text-secondary);
 }
 </style>

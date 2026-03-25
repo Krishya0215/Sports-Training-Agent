@@ -64,3 +64,6 @@ md5.txt
 # OS
 Thumbs.db
 .DS_Store
+
+# markdown
+*.md

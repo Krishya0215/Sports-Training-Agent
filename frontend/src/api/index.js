@@ -1,82 +1,156 @@
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const api = axios.create({
   baseURL: '/api',
-  timeout: 30000
+  timeout: 120000
 })
 
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
 api.interceptors.response.use(
-  response => response.data,
-  error => {
+  (response) => {
+    if (response.data === undefined || response.data === null) {
+      console.warn('API returned empty response body')
+      return {}
+    }
+    return response.data
+  },
+  (error) => {
     console.error('API Error:', error)
+    if (error.response?.status === 401) {
+      const authStore = useAuthStore()
+      authStore.logout()
+    }
     return Promise.reject(error)
   }
 )
 
 export default {
-  // 查询问答（流式）
-  queryStream(question, onChunk, onComplete, onError) {
-    const eventSource = new EventSource(`/api/query?question=${encodeURIComponent(question)}`)
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        if (data.error) {
-          onError(new Error(data.error))
-          eventSource.close()
-          return
-        }
-        
-        if (data.done) {
-          onComplete()
-          eventSource.close()
-        } else {
-          onChunk(data.content)
-        }
-      } catch (error) {
-        onError(error)
-        eventSource.close()
+  async queryStream(question, onChunk, onComplete, onError) {
+    try {
+      const token = localStorage.getItem('token')
+      const headers = {
+        'Content-Type': 'application/json'
       }
-    }
-    
-    eventSource.onerror = (error) => {
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/query', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ question, use_multi_agent: false })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      if (!response.body) {
+        throw new Error('Empty response stream')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let answerCompleted = false
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        while (true) {
+          const eventEnd = buffer.indexOf('\n\n')
+          if (eventEnd === -1) break
+
+          const rawEvent = buffer.slice(0, eventEnd)
+          buffer = buffer.slice(eventEnd + 2)
+
+          const dataLines = rawEvent
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith('data:'))
+          if (!dataLines.length) continue
+
+          const payload = dataLines.map((line) => line.slice(5).trimStart()).join('\n')
+
+          try {
+            const data = JSON.parse(payload)
+            if (data.error) {
+              onError(new Error(data.error))
+              return
+            }
+
+            const type = data.type || 'answer'
+            if (data.done) {
+              if (type === 'answer') answerCompleted = true
+              onComplete(type)
+            } else {
+              onChunk(data.content || '', type)
+            }
+          } catch (_e) {
+            continue
+          }
+        }
+      }
+
+      if (!answerCompleted) {
+        onComplete('answer')
+      }
+    } catch (error) {
       onError(error)
-      eventSource.close()
     }
-    
-    return eventSource
   },
-  
-  // 查询问答（非流式，兼容）
+
   query(question) {
     return api.post('/query/sync', { question })
   },
-  
-  // 加载知识库
+
   loadKnowledge(forceReload = false) {
     return api.post('/knowledge/load', null, {
       params: { force_reload: forceReload }
     })
   },
-  
-  // 获取记忆摘要
+
   getMemorySummary() {
     return api.get('/memory/summary')
   },
-  
-  // 获取知识库统计
+
   getKnowledgeStats() {
     return api.get('/knowledge/stats')
   },
-  
-  // 清空工作记忆
+
   clearWorkingMemory() {
     return api.post('/memory/clear')
   },
-  
-  // 获取对话历史
+
   getChatHistory() {
     return api.get('/chat/history')
+  },
+
+  get(url, config) {
+    return api.get(url, config)
+  },
+
+  post(url, data, config) {
+    return api.post(url, data, config)
+  },
+
+  put(url, data, config) {
+    return api.put(url, data, config)
+  },
+
+  delete(url, config) {
+    return api.delete(url, config)
   }
 }

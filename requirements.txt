@@ -11,6 +11,7 @@ chromadb>=0.5.0
 # 文档处理
 markitdown>=0.0.1a2
 pypdf>=4.0.0
+pymupdf>=1.23.0
 pillow>=10.0.0
 
 # 模型相关

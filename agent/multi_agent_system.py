@@ -291,6 +291,19 @@ class MultiAgentTrainingSystem:
         """训练规划教练节点"""
         state["training_plan"] = self.planning_coach.process(state)
         state["workflow_history"] = state.get("workflow_history", []) + ["训练规划教练完成"]
+        
+        # 如果有流式回调，立即返回结果
+        if state.get("_stream_callback"):
+            state["_stream_callback"]({
+                "type": "coach_result",
+                "coach": {
+                    "name": "训练规划教练",
+                    "icon": "📋",
+                    "role": "planning",
+                    "content": state["training_plan"]
+                }
+            })
+        
         return state
     
     def _technique_coach_node(self, state: TrainingState) -> TrainingState:
@@ -298,6 +311,19 @@ class MultiAgentTrainingSystem:
         context = state.get("training_plan", "")
         state["technique_guidance"] = self.technique_coach.process(state, context)
         state["workflow_history"] = state.get("workflow_history", []) + ["技术指导教练完成"]
+        
+        # 如果有流式回调，立即返回结果
+        if state.get("_stream_callback"):
+            state["_stream_callback"]({
+                "type": "coach_result",
+                "coach": {
+                    "name": "技术指导教练",
+                    "icon": "🎯",
+                    "role": "technique",
+                    "content": state["technique_guidance"]
+                }
+            })
+        
         return state
     
     def _fitness_coach_node(self, state: TrainingState) -> TrainingState:
@@ -305,6 +331,19 @@ class MultiAgentTrainingSystem:
         context = state.get("training_plan", "")
         state["fitness_assessment"] = self.fitness_coach.process(state, context)
         state["workflow_history"] = state.get("workflow_history", []) + ["体能评估教练完成"]
+        
+        # 如果有流式回调，立即返回结果
+        if state.get("_stream_callback"):
+            state["_stream_callback"]({
+                "type": "coach_result",
+                "coach": {
+                    "name": "体能评估教练",
+                    "icon": "💪",
+                    "role": "fitness",
+                    "content": state["fitness_assessment"]
+                }
+            })
+        
         return state
     
     def _recovery_coach_node(self, state: TrainingState) -> TrainingState:
@@ -312,6 +351,19 @@ class MultiAgentTrainingSystem:
         context = f"训练计划: {state.get('training_plan', '')}\n技术指导: {state.get('technique_guidance', '')}"
         state["recovery_advice"] = self.recovery_coach.process(state, context)
         state["workflow_history"] = state.get("workflow_history", []) + ["运动康复教练完成"]
+        
+        # 如果有流式回调，立即返回结果
+        if state.get("_stream_callback"):
+            state["_stream_callback"]({
+                "type": "coach_result",
+                "coach": {
+                    "name": "运动康复教练",
+                    "icon": "🏥",
+                    "role": "recovery",
+                    "content": state["recovery_advice"]
+                }
+            })
+        
         return state
     
     def _safety_coach_node(self, state: TrainingState) -> TrainingState:
@@ -319,46 +371,129 @@ class MultiAgentTrainingSystem:
         context = f"训练计划: {state.get('training_plan', '')}"
         state["safety_warnings"] = self.safety_coach.process(state, context)
         state["workflow_history"] = state.get("workflow_history", []) + ["安全督导教练完成"]
+        
+        # 如果有流式回调，立即返回结果
+        if state.get("_stream_callback"):
+            state["_stream_callback"]({
+                "type": "coach_result",
+                "coach": {
+                    "name": "安全督导教练",
+                    "icon": "⚠️",
+                    "role": "safety",
+                    "content": state["safety_warnings"]
+                }
+            })
+        
         return state
     
     def _synthesize_node(self, state: TrainingState) -> TrainingState:
-        """综合各教练的建议，生成最终响应"""
-        logger.info("综合各教练建议")
-        
-        # 构建综合响应
-        response_parts = []
-        
-        if state.get("training_plan"):
-            response_parts.append(f"## 📋 训练规划\n{state['training_plan']}\n")
-        
-        if state.get("technique_guidance"):
-            response_parts.append(f"## 🎯 技术指导\n{state['technique_guidance']}\n")
-        
-        if state.get("fitness_assessment"):
-            response_parts.append(f"## 💪 体能评估\n{state['fitness_assessment']}\n")
-        
-        if state.get("recovery_advice"):
-            response_parts.append(f"## 🏥 康复建议\n{state['recovery_advice']}\n")
-        
-        if state.get("safety_warnings"):
-            response_parts.append(f"## ⚠️ 安全提示\n{state['safety_warnings']}\n")
-        
-        state["final_response"] = "\n".join(response_parts)
-        state["workflow_history"] = state.get("workflow_history", []) + ["综合响应生成完成"]
-        
-        logger.info("综合响应生成完成")
-        return state
+            """综合各教练的建议，生成最终响应（结构化格式）"""
+            logger.info("综合各教练建议")
+
+            # 构建结构化响应
+            structured_response = {
+                "summary": "",  # 综合建议摘要（简洁版）
+                "coaches": []   # 各教练的详细建议
+            }
+
+            # 添加各教练的建议
+            if state.get("training_plan"):
+                structured_response["coaches"].append({
+                    "name": "训练规划教练",
+                    "icon": "📋",
+                    "role": "planning",
+                    "content": state["training_plan"]
+                })
+
+            if state.get("technique_guidance"):
+                structured_response["coaches"].append({
+                    "name": "技术指导教练",
+                    "icon": "🎯",
+                    "role": "technique",
+                    "content": state["technique_guidance"]
+                })
+
+            if state.get("fitness_assessment"):
+                structured_response["coaches"].append({
+                    "name": "体能评估教练",
+                    "icon": "💪",
+                    "role": "fitness",
+                    "content": state["fitness_assessment"]
+                })
+
+            if state.get("recovery_advice"):
+                structured_response["coaches"].append({
+                    "name": "运动康复教练",
+                    "icon": "🏥",
+                    "role": "recovery",
+                    "content": state["recovery_advice"]
+                })
+
+            if state.get("safety_warnings"):
+                structured_response["coaches"].append({
+                    "name": "安全督导教练",
+                    "icon": "⚠️",
+                    "role": "safety",
+                    "content": state["safety_warnings"]
+                })
+
+            # 生成简洁的综合摘要（每个教练一句话）
+            if len(structured_response["coaches"]) > 0:
+                summary_parts = []
+                for coach in structured_response["coaches"]:
+                    # 提取每个教练建议的第一句话作为摘要
+                    content = coach["content"]
+                    # 按句号、换行符等分割，取第一句
+                    first_sentence = content.split('\n')[0].strip()
+                    if '。' in first_sentence:
+                        first_sentence = first_sentence.split('。')[0] + '。'
+                    elif '！' in first_sentence:
+                        first_sentence = first_sentence.split('！')[0] + '！'
+                    elif '？' in first_sentence:
+                        first_sentence = first_sentence.split('？')[0] + '？'
+
+                    # 限制长度
+                    if len(first_sentence) > 100:
+                        first_sentence = first_sentence[:100] + '...'
+
+                    summary_parts.append(f"{coach['icon']} {coach['name']}：{first_sentence}")
+
+                structured_response["summary"] = "\n\n".join(summary_parts)
+
+            # 同时保留文本格式（向后兼容）
+            response_parts = []
+            for coach in structured_response["coaches"]:
+                response_parts.append(f"## {coach['icon']} {coach['name']}\n{coach['content']}\n")
+
+            state["final_response"] = "\n".join(response_parts)
+            state["structured_response"] = structured_response  # 新增结构化响应
+            state["workflow_history"] = state.get("workflow_history", []) + ["综合响应生成完成"]
+
+            logger.info("综合响应生成完成")
+            return state
+
     
     def _update_memory_node(self, state: TrainingState) -> TrainingState:
         """更新记忆系统"""
         try:
+            # 提取图像描述信息
+            image_descriptions = []
+            for doc in state.get("retrieved_docs", []):
+                if doc.metadata.get("content_type") == "image_description":
+                    image_descriptions.append({
+                        "image_id": doc.metadata.get("image_filename", "unknown"),
+                        "description": doc.page_content,
+                        "metadata": doc.metadata
+                    })
+            
             self.memory_manager.record_interaction(
                 question=state["user_input"],
                 answer=state["final_response"],
                 retrieved_docs=[doc.metadata.get("source", "未知") for doc in state.get("retrieved_docs", [])],
                 metadata={
                     "workflow": state.get("workflow_history", []),
-                    "coaches_involved": state.get("current_coach", "unknown")
+                    "coaches_involved": state.get("current_coach", "unknown"),
+                    "image_descriptions": image_descriptions
                 }
             )
             logger.info("记忆更新完成")
@@ -367,13 +502,14 @@ class MultiAgentTrainingSystem:
         
         return state
     
-    def process_request(self, user_input: str, user_profile: dict = None) -> dict:
+    def process_request(self, user_input: str, user_profile: dict = None, stream_callback=None) -> dict:
         """
         处理用户请求
         
         Args:
             user_input: 用户输入
             user_profile: 用户档案（目标、能力、历史数据等）
+            stream_callback: 流式回调函数，用于实时返回每个教练的结果
             
         Returns:
             包含最终响应和工作流历史的字典
@@ -390,25 +526,77 @@ class MultiAgentTrainingSystem:
             "final_response": "",
             "retrieved_docs": [],
             "current_coach": "",
-            "workflow_history": []
+            "workflow_history": [],
+            "_stream_callback": stream_callback  # 存储回调函数
         }
         
-        try:
-            # 执行状态图
-            final_state = self.graph.invoke(initial_state)
-            
-            return {
-                "response": final_state["final_response"],
-                "workflow": final_state.get("workflow_history", []),
-                "coaches_involved": final_state.get("current_coach", "unknown")
-            }
-        except Exception as e:
-            logger.error(f"请求处理失败: {e}")
-            return {
-                "response": f"抱歉，处理您的请求时出现错误: {str(e)}",
-                "workflow": ["处理失败"],
-                "coaches_involved": "error"
-            }
+        max_retries = 2
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"多智能体处理尝试 {attempt + 1}/{max_retries}")
+                
+                # 执行状态图
+                final_state = self.graph.invoke(initial_state)
+                
+                # 构建思考过程
+                thinking_steps = []
+                thinking_steps.append(f"📖 **接收请求**: {initial_state['user_input'][:100]}")
+                if final_state.get("workflow_history"):
+                    for step in final_state.get("workflow_history", [])[:3]:
+                        thinking_steps.append(f"🤖 **{step}**")
+                thinking_steps.append(f"💡 **综合分析**: 整合多个教练的建议")
+                
+                logger.info(f"多智能体处理成功 (第 {attempt + 1} 次尝试)")
+                
+                return {
+                    "thinking": "\n".join(thinking_steps),
+                    "response": final_state["final_response"],
+                    "structured_response": final_state.get("structured_response", {}),
+                    "workflow": final_state.get("workflow_history", []),
+                    "coaches_involved": final_state.get("current_coach", "unknown")
+                }
+                
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+                logger.warning(f"多智能体处理失败 (第 {attempt + 1}/{max_retries}): {error_str[:100]}")
+                
+                # 检查是否是网络错误
+                is_network_error = any(keyword in error_str.lower() 
+                                      for keyword in ['ssl', 'timeout', 'connection', 'max retries'])
+                
+                if is_network_error and attempt < max_retries - 1:
+                    import time
+                    wait_time = 2 ** attempt
+                    logger.info(f"网络错误，{wait_time}秒后重试...")
+                    time.sleep(wait_time)
+                    continue
+                elif attempt < max_retries - 1:
+                    logger.info("正在重试...")
+                    continue
+        
+        # 所有重试都失败
+        logger.error(f"多智能体处理失败 (经过 {max_retries} 次尝试): {str(last_error)[:200]}")
+        error_msg = str(last_error)
+        
+        if 'ssl' in error_msg.lower():
+            thinking = "❌ **SSL连接错误**\n\n与AI服务的连接出现问题。"
+            response = "网络连接出现问题，请检查您的网络连接并稍后重试。"
+        elif 'timeout' in error_msg.lower():
+            thinking = "❌ **请求超时**\n\nAI服务响应较慢。"
+            response = "请求处理超时，请稍后重试。"
+        else:
+            thinking = f"❌ **处理出错**: {error_msg[:100]}"
+            response = f"处理您的请求时出现错误，请稍后重试。\n\n详情：{error_msg[:150]}"
+        
+        return {
+            "thinking": thinking,
+            "response": response,
+            "workflow": [f"处理失败: {error_msg[:50]}"],
+            "coaches_involved": "error"
+        }
     
     def load_knowledge_base(self):
         """加载知识库"""
