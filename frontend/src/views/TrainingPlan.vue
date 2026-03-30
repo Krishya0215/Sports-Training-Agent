@@ -4,7 +4,7 @@
 
     <div class="page-container">
       <!-- 页面头部 -->
-      <header class="page-header">
+      <header v-if="isDetailView" class="page-header">
         <div class="header-content">
           <div class="header-text">
             <p class="header-label">Training Plans</p>
@@ -99,9 +99,7 @@
                   </svg>
                   计划内容
                 </h3>
-                <div class="content-body">
-                  <pre>{{ removeMarkdownFormat(selectedPlan.content) }}</pre>
-                </div>
+                <div class="content-body markdown-content" v-html="renderPlanContent(selectedPlan.content)"></div>
               </div>
 
               <div class="plan-actions">
@@ -186,7 +184,7 @@
                   </div>
                   <div class="detail-item full-width">
                     <span class="detail-label">训练内容</span>
-                    <p class="detail-text">{{ detailEntry.summary }}</p>
+                    <div class="detail-text markdown-content entry-markdown" v-html="renderPlanContent(detailEntry.summary)"></div>
                   </div>
                 </div>
               </div>
@@ -199,9 +197,25 @@
       <template v-else>
         <div v-if="currentPlan" class="dashboard-view">
           <div class="dashboard-grid">
-            <!-- 左侧：当前计划概览 -->
-            <div class="dashboard-sidebar">
+            <!-- 顶部：管理你的训练计划 + 当前计划 + 历史计划 -->
+            <div class="dashboard-top">
               <div class="current-plan-card">
+                <div class="management-intro">
+                  <!-- <div class="management-text">
+                    <p class="card-label">Training Plans</p>
+                    <h2 class="management-title">管理你的训练计划</h2>
+                    <p class="management-description">查看当前计划、切换历史计划，并在日历中查看每日训练内容。</p>
+                  </div> -->
+                  <button type="button" class="btn btn-primary management-create-btn" @click="goCreatePlan">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    创建新计划
+                  </button>
+                </div>
+
+                <div class="card-section-divider"></div>
+
                 <div class="plan-card-header">
                   <div>
                     <p class="card-label">Current Plan</p>
@@ -242,162 +256,214 @@
                   </div>
                 </div>
               </div>
+              <div class="dashboard-sidebar">
+                <div class="history-card">
+                  <div class="card-header">
+                    <h3>历史训练计划</h3>
+                  </div>
 
-              <!-- 训练内容面板 -->
-              <div class="training-content-card">
-                <div class="card-header">
-                  <h3>训练内容</h3>
+                  <div v-if="historyPlans.length" class="history-list">
+                    <div v-for="plan in historyPlans" :key="plan.id" class="history-item">
+                      <div class="history-item-header">
+                        <div>
+                          <h4>{{ plan.title }}</h4>
+                          <p class="item-subtitle">{{ plan.goal || 'AI 教练推荐' }}</p>
+                        </div>
+                        <div v-if="plan.created_from_ai" class="badge badge-ai small">AI</div>
+                      </div>
+
+                      <div class="item-tags">
+                        <span class="tag small">{{ getWeekdaysLabel(plan) }}</span>
+                        <span class="tag small">{{ plan.metadata?.intensity || '强度待定' }}</span>
+                      </div>
+
+                      <div class="item-actions">
+                        <button type="button" class="btn btn-secondary small" @click="switchCurrentPlan(plan.id)">
+                          设为当前
+                        </button>
+                        <button type="button" class="btn btn-outline small" @click="openPlanDetail(plan.id)">
+                          详情
+                        </button>
+                        <button type="button" class="btn btn-outline small" @click="openEditModal(plan)">
+                          修改
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="empty-state">
+                    <div class="empty-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <p>还没有历史训练计划</p>
+                  </div>
                 </div>
-                <div v-if="boardEntry" class="content-details">
-                  <div class="detail-row">
-                    <span class="detail-label">所属计划</span>
-                    <span class="detail-value">{{ currentPlan.title }}</span>
+              </div>
+            </div>
+
+            <!-- 下方：训练日历 -->
+            <div class="dashboard-bottom">
+              <div class="dashboard-main">
+                <div class="calendar-card">
+                  <div class="calendar-header">
+                    <h3>训练日历</h3>
+                    <div class="calendar-nav">
+                      <button type="button" class="btn btn-icon" @click="changeMonth(-1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M15 19l-7-7 7-7"/>
+                        </svg>
+                      </button>
+                      <span class="calendar-title">{{ monthLabel }}</span>
+                      <button type="button" class="btn btn-icon" @click="changeMonth(1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M9 5l7 7-7 7"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <div class="detail-row">
-                    <span class="detail-label">日期</span>
-                    <span class="detail-value">{{ formatDate(boardEntry.date) }}</span>
+
+                  <CalendarPanel
+                    :month-label="monthLabel"
+                    :weekday-headers="weekdayHeaders"
+                    :calendar-days="calendarDays"
+                    :entry-for-day="(day) => getTrainingEntry(currentPlan, day)"
+                    @prev="changeMonth(-1)"
+                    @next="changeMonth(1)"
+                    @open-entry="openBoardEntry"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div v-if="boardEntry" class="board-entry-overlay" @click.self="closeBoardEntry">
+              <div class="board-entry-card">
+                <div class="board-entry-header">
+                  <div>
+                    <span class="entry-date">{{ formatDate(boardEntry.date) }}</span>
+                    <h4>{{ boardEntry.title }}</h4>
+                    <p class="board-entry-plan">{{ currentPlan.title }}</p>
                   </div>
-                  <div class="detail-row">
+                  <button type="button" class="btn btn-icon" @click="closeBoardEntry">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="entry-details">
+                  <div class="detail-item">
                     <span class="detail-label">时长</span>
                     <span class="detail-value">{{ boardEntry.duration }}</span>
                   </div>
-                  <div class="detail-row">
+                  <div class="detail-item">
                     <span class="detail-label">训练重点</span>
                     <span class="detail-value">{{ boardEntry.focus }}</span>
                   </div>
-                  <div class="detail-row">
+                  <div class="detail-item">
                     <span class="detail-label">恢复建议</span>
                     <span class="detail-value">{{ boardEntry.recovery }}</span>
                   </div>
-                  <div class="detail-row">
+                  <div class="detail-item full-width">
                     <span class="detail-label">训练内容</span>
-                    <p class="detail-text">{{ boardEntry.summary }}</p>
+                    <div class="detail-text markdown-content entry-markdown" v-html="renderPlanContent(boardEntry.summary)"></div>
                   </div>
-                </div>
-                <div v-else class="content-empty">
-                  <div class="empty-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                  </div>
-                  <p>点击日历中的训练日查看详细内容</p>
-                  <p class="empty-hint">只有确认后的训练日才会显示训练内容</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- 中间：日历 -->
-            <div class="dashboard-main">
-              <div class="calendar-card">
-                <div class="calendar-header">
-                  <h3>训练日历</h3>
-                  <div class="calendar-nav">
-                    <button type="button" class="btn btn-icon" @click="changeMonth(-1)">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M15 19l-7-7 7-7"/>
-                      </svg>
-                    </button>
-                    <span class="calendar-title">{{ monthLabel }}</span>
-                    <button type="button" class="btn btn-icon" @click="changeMonth(1)">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 5l7 7-7 7"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <CalendarPanel
-                  :month-label="monthLabel"
-                  :weekday-headers="weekdayHeaders"
-                  :calendar-days="calendarDays"
-                  :entry-for-day="(day) => getTrainingEntry(currentPlan, day)"
-                  @prev="changeMonth(-1)"
-                  @next="changeMonth(1)"
-                  @open-entry="openBoardEntry"
-                />
-              </div>
-            </div>
-
-            <!-- 右侧：历史计划 -->
-            <div class="dashboard-sidebar">
-              <div class="history-card">
-                <div class="card-header">
-                  <h3>历史训练计划</h3>
-                </div>
-
-                <div v-if="historyPlans.length" class="history-list">
-                  <div v-for="plan in historyPlans" :key="plan.id" class="history-item">
-                    <div class="history-item-header">
-                      <div>
-                        <h4>{{ plan.title }}</h4>
-                        <p class="item-subtitle">{{ plan.goal || 'AI 教练推荐' }}</p>
-                      </div>
-                      <div v-if="plan.created_from_ai" class="badge badge-ai small">AI</div>
-                    </div>
-
-                    <div class="item-tags">
-                      <span class="tag small">{{ getWeekdaysLabel(plan) }}</span>
-                      <span class="tag small">{{ plan.metadata?.intensity || '强度待定' }}</span>
-                    </div>
-
-                    <div class="item-actions">
-                      <button type="button" class="btn btn-secondary small" @click="switchCurrentPlan(plan.id)">
-                        设为当前
-                      </button>
-                      <button type="button" class="btn btn-outline small" @click="openPlanDetail(plan.id)">
-                        详情
-                      </button>
-                      <button type="button" class="btn btn-outline small" @click="openEditModal(plan)">
-                        修改
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="empty-state">
-                  <div class="empty-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                  </div>
-                  <p>还没有历史训练计划</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- 空状态带日历 -->
         <div v-else class="empty-state-with-calendar">
-          <!-- 日历部分 -->
-          <div class="calendar-empty-section">
-            <div class="calendar-header">
-              <h3>训练日历</h3>
-              <div class="calendar-nav">
-                <button type="button" class="btn btn-icon" @click="changeMonth(-1)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 19l-7-7 7-7"/>
+          <div class="empty-dashboard-grid">
+            <!-- 顶部：管理你的训练计划 + 当前计划占位 + 历史计划占位 -->
+            <div class="dashboard-top">
+              <div class="placeholder-card current-placeholder">
+                <div class="management-intro">
+                  <div class="management-text">
+                    <p class="card-label">Training Plans</p>
+                    <h2 class="management-title">管理你的训练计划</h2>
+                    <p class="management-description">创建你的第一份训练计划，并在日历中查看后续训练安排。</p>
+                  </div>
+                  <button type="button" class="btn btn-primary management-create-btn" @click="goCreatePlan">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    创建首个计划
+                  </button>
+                </div>
+
+                <div class="card-section-divider"></div>
+
+                <div class="placeholder-illustration">
+                  <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="40" cy="40" r="36" fill="url(#placeholderGrad1)" opacity="0.1"/>
+                    <path d="M40 20L46 32H58L50 42L54 54L40 46L26 54L30 42L22 32H34L40 20Z" stroke="url(#placeholderGrad1)" stroke-width="2" fill="none"/>
+                    <defs>
+                      <linearGradient id="placeholderGrad1" x1="20" y1="20" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#0071e3"/>
+                        <stop offset="1" stop-color="#0077ed"/>
+                      </linearGradient>
+                    </defs>
                   </svg>
-                </button>
-                <span class="calendar-title">{{ monthLabel }}</span>
-                <button type="button" class="btn btn-icon" @click="changeMonth(1)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 5l7 7-7 7"/>
-                  </svg>
-                </button>
+                </div>
+                <p class="placeholder-title">当前计划</p>
+                <p class="placeholder-desc">暂无正在进行的训练计划</p>
+              </div>
+
+              <div class="dashboard-sidebar">
+                <div class="placeholder-card history-placeholder">
+                  <div class="placeholder-illustration">
+                    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="40" cy="40" r="36" fill="url(#placeholderGrad3)" opacity="0.1"/>
+                      <path d="M28 32H52M28 40H44M28 48H40" stroke="url(#placeholderGrad3)" stroke-width="2" stroke-linecap="round"/>
+                      <circle cx="58" cy="32" r="4" fill="url(#placeholderGrad3)"/>
+                      <defs>
+                        <linearGradient id="placeholderGrad3" x1="20" y1="20" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#0071e3"/>
+                          <stop offset="1" stop-color="#0077ed"/>
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+                  <p class="placeholder-title">历史计划</p>
+                  <p class="placeholder-desc">暂无历史训练计划</p>
+                </div>
               </div>
             </div>
 
-            <CalendarPanel
-              :month-label="monthLabel"
-              :weekday-headers="weekdayHeaders"
-              :calendar-days="calendarDays"
-              :entry-for-day="(day) => getTrainingEntry(null, day)"
-              @prev="changeMonth(-1)"
-              @next="changeMonth(1)"
-              @open-entry="() => {}"
-            />
-          </div>
+            <!-- 下方：训练日历 -->
+            <div class="dashboard-bottom">
+              <div class="dashboard-main">
+                <div class="calendar-card">
+                  <div class="calendar-header">
+                    <h3>训练日历</h3>
+                    <div class="calendar-nav">
+                      <button type="button" class="btn btn-icon" @click="changeMonth(-1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M15 19l-7-7 7-7"/>
+                        </svg>
+                      </button>
+                      <span class="calendar-title">{{ monthLabel }}</span>
+                      <button type="button" class="btn btn-icon" @click="changeMonth(1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M9 5l7 7-7 7"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
 
+                  <CalendarPanel
+                    :month-label="monthLabel"
+                    :weekday-headers="weekdayHeaders"
+                    :calendar-days="calendarDays"
+                    :entry-for-day="(day) => getTrainingEntry(null, day)"
+                    @prev="changeMonth(-1)"
+                    @next="changeMonth(1)"
+                    @open-entry="() => {}"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -529,7 +595,6 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -720,11 +785,288 @@ const planSubtitle = (plan) => {
   return `围绕 ${method} 制定，单次训练约 ${duration}。`
 }
 
+const escapeHtml = (text = '') =>
+  String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+const formatInlineMarkdown = (text = '') =>
+  escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+
+const renderPlanContent = (content = '') => {
+  const lines = String(content || '').replace(/\r\n/g, '\n').split('\n')
+  const html = []
+  let inList = false
+  let inParagraph = false
+
+  const closeList = () => {
+    if (inList) {
+      html.push('</ul>')
+      inList = false
+    }
+  }
+
+  const closeParagraph = () => {
+    if (inParagraph) {
+      html.push('</p>')
+      inParagraph = false
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+
+    if (!line) {
+      closeList()
+      closeParagraph()
+      continue
+    }
+
+    const headingMatch = line.match(/^(#{1,4})\s+(.+)$/)
+    if (headingMatch) {
+      closeList()
+      closeParagraph()
+      const level = Math.min(4, headingMatch[1].length)
+      html.push(`<h${level}>${formatInlineMarkdown(headingMatch[2].trim())}</h${level}>`)
+      continue
+    }
+
+    if (/^计划标题[:：]/.test(line)) {
+      closeList()
+      closeParagraph()
+      html.push(`<h1>${formatInlineMarkdown(line.replace(/^计划标题[:：]\s*/, ''))}</h1>`)
+      continue
+    }
+
+    if (/^计划概述[:：]/.test(line)) {
+      closeList()
+      closeParagraph()
+      html.push(`<h2>计划概述</h2><p>${formatInlineMarkdown(line.replace(/^计划概述[:：]\s*/, ''))}</p>`)
+      continue
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      closeParagraph()
+      if (!inList) {
+        html.push('<ul>')
+        inList = true
+      }
+      html.push(`<li>${formatInlineMarkdown(line.replace(/^[-*]\s+/, ''))}</li>`)
+      continue
+    }
+
+    if (!inParagraph) {
+      closeList()
+      html.push('<p>')
+      inParagraph = true
+    } else {
+      html.push('<br>')
+    }
+    html.push(formatInlineMarkdown(line))
+  }
+
+  closeList()
+  closeParagraph()
+
+  return html.join('')
+}
+
+const normalizePlanText = (text = '') =>
+  String(text || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\r\n/g, '\n')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .replace(/^#+\s*/gm, '')
+    .trim()
+
 const contentSegments = (plan) =>
   removeMarkdownFormat(String(plan?.content || ''))
     .split(/\n+/)
     .map((segment) => segment.trim())
     .filter(Boolean)
+
+const getCleanCellText = (value = '') =>
+  removeMarkdownFormat(
+    String(value || '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/&nbsp;/g, ' ')
+  )
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n')
+
+const sessionTitlePattern = /^(第\s*\d+\s*(天|次)|训练日\s*[一二三四五六七1234567]|day\s*\d+|周[一二三四五六日天])[:：]?\s*(.*)$/i
+
+const isSessionTitleLine = (line = '') => sessionTitlePattern.test(line.trim())
+
+const extractTableSessions = (text = '') => {
+  const lines = text.split('\n')
+  const sessions = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim()
+    if (!line.includes('|')) continue
+
+    const headerCells = line.split('|').map((cell) => cell.trim()).filter(Boolean)
+    const separatorLine = lines[index + 1]?.trim() || ''
+    const isHeaderSeparator = /^[\s|:-]+$/.test(separatorLine)
+    if (!headerCells.length || !isHeaderSeparator) continue
+
+    const dayIndex = headerCells.findIndex((cell) => /训练日|第.?天|day|星期|周几/i.test(cell))
+    const themeIndex = headerCells.findIndex((cell) => /主题|训练主题|项目|内容概览/i.test(cell))
+    const durationIndex = headerCells.findIndex((cell) => /时长|时间|分钟/i.test(cell))
+    const focusIndex = headerCells.findIndex((cell) => /训练重点|重点|动作|主训练|训练内容/i.test(cell))
+    const recoveryIndex = headerCells.findIndex((cell) => /恢复建议|恢复|放松/i.test(cell))
+
+    if ([dayIndex, themeIndex, durationIndex, focusIndex, recoveryIndex].every((value) => value === -1)) continue
+
+    index += 2
+    while (index < lines.length) {
+      const rowLine = lines[index].trim()
+      if (!rowLine.includes('|')) {
+        index -= 1
+        break
+      }
+      if (/^[\s|:-]+$/.test(rowLine)) {
+        index += 1
+        continue
+      }
+
+      const cells = rowLine.split('|').map((cell) => cell.trim()).filter(Boolean)
+      if (!cells.length) {
+        index += 1
+        continue
+      }
+
+      const dayLabel = dayIndex >= 0 ? getCleanCellText(cells[dayIndex] || '') : ''
+      const theme = themeIndex >= 0 ? getCleanCellText(cells[themeIndex] || '') : ''
+      const duration = durationIndex >= 0 ? getCleanCellText(cells[durationIndex] || '') : ''
+      const focus = focusIndex >= 0 ? getCleanCellText(cells[focusIndex] || '') : ''
+      const recovery = recoveryIndex >= 0 ? getCleanCellText(cells[recoveryIndex] || '') : ''
+
+      if (dayLabel || theme || focus) {
+        sessions.push({
+          dayLabel,
+          title: theme || dayLabel,
+          duration,
+          focus: theme || focus,
+          recovery,
+          summary: focus || theme || ''
+        })
+      }
+      index += 1
+    }
+  }
+
+  return sessions
+}
+
+const extractBlockSessions = (text = '') => {
+  const lines = text
+    .split('\n')
+    .map((line) => removeMarkdownFormat(line).trim())
+    .filter(Boolean)
+
+  const sessions = []
+  let current = null
+
+  const pushCurrent = () => {
+    if (!current) return
+    const summary = current.summaryLines.join('\n').trim()
+    if (current.title || summary) {
+      sessions.push({
+        dayLabel: current.dayLabel,
+        title: current.title || current.dayLabel || '',
+        duration: current.duration,
+        focus: current.focus || current.title || '',
+        recovery: current.recovery,
+        summary
+      })
+    }
+    current = null
+  }
+
+  for (const line of lines) {
+    const titleMatch = line.match(sessionTitlePattern)
+    if (titleMatch) {
+      pushCurrent()
+      current = {
+        dayLabel: titleMatch[1]?.trim() || '',
+        title: titleMatch[3]?.trim() || titleMatch[1]?.trim() || '',
+        duration: '',
+        focus: '',
+        recovery: '',
+        summaryLines: []
+      }
+      continue
+    }
+
+    if (!current) continue
+
+    if (/^(训练主题|主题)[:：]/.test(line)) {
+      current.title = line.replace(/^(训练主题|主题)[:：]\s*/, '').trim() || current.title
+      if (!current.focus) current.focus = current.title
+      continue
+    }
+
+    if (/^(建议时长|训练时长|时长|训练时间)[:：]/.test(line)) {
+      current.duration = line.replace(/^(建议时长|训练时长|时长|训练时间)[:：]\s*/, '').trim()
+      continue
+    }
+
+    if (/^(训练重点|重点|主训练)[:：]/.test(line)) {
+      current.focus = line.replace(/^(训练重点|重点|主训练)[:：]\s*/, '').trim()
+      continue
+    }
+
+    if (/^(恢复建议|恢复|放松建议)[:：]/.test(line)) {
+      current.recovery = line.replace(/^(恢复建议|恢复|放松建议)[:：]\s*/, '').trim()
+      continue
+    }
+
+    if (/^(训练内容|内容安排|动作安排)[:：]/.test(line)) {
+      const summaryLine = line.replace(/^(训练内容|内容安排|动作安排)[:：]\s*/, '').trim()
+      if (summaryLine) current.summaryLines.push(summaryLine)
+      continue
+    }
+
+    current.summaryLines.push(line)
+  }
+
+  pushCurrent()
+  return sessions
+}
+
+const extractPlanSessions = (plan) => {
+  const rawText = normalizePlanText(String(plan?.content || ''))
+  if (!rawText) return []
+
+  const tableSessions = extractTableSessions(rawText)
+  if (tableSessions.length) return tableSessions
+
+  const blockSessions = extractBlockSessions(rawText)
+  if (blockSessions.length) return blockSessions
+
+  return contentSegments(plan).map((segment, index) => ({
+    dayLabel: `第 ${index + 1} 次训练`,
+    title: `第 ${index + 1} 次训练`,
+    duration: '',
+    focus: '',
+    recovery: '',
+    summary: segment
+  }))
+}
 
 const getRecoveryText = (plan) => {
   const intensity = String(plan?.metadata?.intensity || '')
@@ -741,7 +1083,7 @@ const buildTrainingEntries = (plan) => {
 
   const start = new Date(plan.start_date || new Date())
   const end = new Date(plan.end_date || addDays(plan.start_date || new Date().toISOString(), 29))
-  const segments = contentSegments(plan)
+  const sessions = extractPlanSessions(plan)
   const entries = []
   let sessionIndex = 0
 
@@ -749,13 +1091,15 @@ const buildTrainingEntries = (plan) => {
     const weekday = weekdayHeaders[(cursor.getDay() + 6) % 7]
     if (!weekdays.includes(weekday)) continue
 
+    const session = sessions[sessionIndex] || sessions[sessionIndex % Math.max(sessions.length, 1)] || null
+
     entries.push({
       date: getDateKey(cursor),
-      title: `第 ${sessionIndex + 1} 次训练`,
-      duration: `${plan?.metadata?.daily_duration || 30} 分钟`,
-      focus: `${plan?.metadata?.method || '综合训练'} · ${plan?.goal || '训练目标'}`,
-      recovery: getRecoveryText(plan),
-      summary: segments[sessionIndex % Math.max(segments.length, 1)] || '按照计划完成今天的训练内容。'
+      title: session?.title || `第 ${sessionIndex + 1} 次训练`,
+      duration: session?.duration || `${plan?.metadata?.daily_duration || 30} 分钟`,
+      focus: session?.focus || `${plan?.metadata?.method || '综合训练'} · ${plan?.goal || '训练目标'}`,
+      recovery: session?.recovery || getRecoveryText(plan),
+      summary: session?.summary || '按照计划完成今天的训练内容。'
     })
     sessionIndex += 1
   }
@@ -873,6 +1217,10 @@ const switchCurrentPlan = (planId) => {
 
 const openBoardEntry = (entry) => {
   boardEntry.value = entry
+}
+
+const closeBoardEntry = () => {
+  boardEntry.value = null
 }
 
 const openDetailEntry = (entry) => {
@@ -1078,36 +1426,90 @@ const CalendarPanel = defineComponent({
 </script>
 
 <style scoped>
-/* 基础样式 */
+/* ========================================
+   动态运动训练主题设计
+   Dynamic Sports Training Design
+   ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+/* CSS 变量定义 */
+.training-plan-page {
+  --primary-gradient: linear-gradient(135deg, #0071e3 0%, #0077ed 50%, #42a5f5 100%);
+  --primary-gradient-reverse: linear-gradient(135deg, #42a5f5 0%, #0077ed 50%, #0071e3 100%);
+  --secondary-gradient: linear-gradient(135deg, #1d1d1f 0%, #86868b 100%);
+  --accent-blue: #0071e3;
+  --accent-blue-light: #0077ed;
+  --accent-sky: #42a5f5;
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --text-tertiary: #d2d2d7;
+  --border-light: rgba(0, 113, 227, 0.12);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.04);
+  --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 8px 32px rgba(0, 113, 227, 0.18);
+  --shadow-elevated: 0 12px 40px rgba(0, 113, 227, 0.12);
+}
+
+/* 页面基础 */
 .training-plan-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--color-bg) 0%, var(--color-surface) 100%);
-  font-family: 'Inter', 'Noto Sans SC', 'PingFang SC', sans-serif;
-  color: var(--color-text-primary);
+  background: var(--bg-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text-primary);
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .page-container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 32px 24px 24px 32px;
 }
 
-/* 头部样式 */
+/* ==================== 头部样式 ==================== */
 .page-header {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 24px;
-  padding: 32px 40px;
-  margin-bottom: 32px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-  box-shadow: 0 20px 40px rgba(0, 82, 163, 0.08);
+  background: var(--bg-elevated);
+  border-radius: 28px;
+  padding: 40px;
+  margin-bottom: 40px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-elevated);
+  position: relative;
+  overflow: hidden;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--primary-gradient);
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 24px;
+  gap: 32px;
+  position: relative;
+  z-index: 1;
 }
 
 .header-text {
@@ -1116,29 +1518,43 @@ const CalendarPanel = defineComponent({
 
 .header-label {
   display: inline-block;
-  padding: 6px 12px;
-  background: rgba(0, 113, 227, 0.1);
-  color: var(--color-accent);
-  border-radius: 20px;
-  font-size: 12px;
+  padding: 8px 16px;
+  background: var(--primary-gradient);
+  color: white;
+  border-radius: 24px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 16px;
+  animation: slideDown 0.5s ease-out 0.2s both;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .header-title {
-  font-size: 32px;
-  font-weight: 800;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
   line-height: 1.2;
   margin: 0 0 12px 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .header-description {
   font-size: 16px;
-  line-height: 1.6;
-  color: var(--color-text-secondary);
+  line-height: 1.7;
+  color: var(--text-secondary);
   margin: 0;
   max-width: 600px;
 }
@@ -1149,154 +1565,264 @@ const CalendarPanel = defineComponent({
   flex-shrink: 0;
 }
 
-/* 按钮样式 */
+/* ==================== 按钮样式 ==================== */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 16px;
   border: none;
   font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 16px;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
 .btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn:hover::before {
+  opacity: 0.1;
+  transform: scaleX(1);
 }
 
 .btn:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
+}
+
+.btn:active::before {
+  opacity: 0.15;
 }
 
 .btn-icon {
   width: 18px;
   height: 18px;
   stroke-width: 2;
+  stroke: currentColor;
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes currentColor {
+  0% { stroke: white; }
+  100% { stroke: white; }
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-accent), #0066CC);
+  background: var(--primary-gradient);
   color: white;
-  box-shadow: 0 8px 24px rgba(0, 113, 227, 0.3);
+  box-shadow: var(--shadow-glow);
+  border: none;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 12px 32px rgba(0, 113, 227, 0.4);
+  background: var(--primary-gradient-reverse);
+  box-shadow: 0 12px 48px rgba(255, 107, 74, 0.25);
+}
+
+.btn-primary .btn-icon {
+  stroke: white;
+  animation: currentColor 0.3s linear;
 }
 
 .btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  border: 1px solid rgba(0, 113, 227, 0.2);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
 }
 
 .btn-secondary:hover {
-  background: rgba(0, 113, 227, 0.05);
+  background: rgba(255, 107, 74, 0.08);
+  border-color: var(--accent-orange);
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--color-text-primary);
-  border: 1px solid rgba(0, 113, 227, 0.3);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
 }
 
 .btn-outline:hover {
-  background: rgba(0, 113, 227, 0.05);
+  background: rgba(255, 107, 74, 0.05);
+  border-color: var(--accent-orange);
 }
 
 .btn-danger {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.08);
   color: #DC2626;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
 .btn-danger:hover {
   background: rgba(239, 68, 68, 0.15);
+  border-color: #B91C1C;
 }
 
-.btn-icon {
+.btn-icon.btn-icon {
   padding: 10px;
   width: 40px;
   height: 40px;
+  border-radius: 12px;
 }
 
 .btn.small {
-  padding: 8px 16px;
+  padding: 10px 20px;
   font-size: 13px;
 }
 
-/* 详情视图 */
+/* ==================== 布局样式 ==================== */
 .detail-view {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 400px 1fr;
   gap: 32px;
   margin-bottom: 32px;
 }
 
-.detail-sidebar {
+.dashboard-view {
+  margin-bottom: 32px;
+}
+
+.dashboard-grid {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.plan-card {
-  background: white;
-  border-radius: 20px;
-  padding: 28px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 82, 163, 0.08);
+.dashboard-top {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
 }
 
+.dashboard-bottom,
+.dashboard-right {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.empty-dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-sidebar,
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-main,
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ==================== 卡片基础样式 ==================== */
+.plan-card,
+.current-plan-card,
+.training-content-card,
+.history-card,
+.calendar-card,
+.placeholder-card {
+  background: var(--bg-elevated);
+  border-radius: 24px;
+  padding: 28px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-soft);
+  transition: all 0.3s ease;
+}
+
+.plan-card:hover,
+.current-plan-card:hover,
+.placeholder-card:hover {
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--accent-orange);
+  transform: translateY(-2px);
+}
+
+.placeholder-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px dashed var(--border-light);
+}
+
+.placeholder-card:hover {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: var(--accent-orange);
+}
+
+/* ==================== 计划卡片样式 ==================== */
 .plan-header {
   margin-bottom: 24px;
 }
 
 .plan-badge-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
 .badge {
   display: inline-block;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .badge-ai {
-  background: rgba(0, 113, 227, 0.1);
-  color: var(--color-accent);
+  background: var(--primary-gradient);
+  color: white;
 }
 
 .badge-method {
-  background: rgba(34, 197, 94, 0.1);
+  background: rgba(34, 197, 94, 0.15);
   color: #16A34A;
 }
 
 .badge.small {
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 4px 10px;
+  font-size: 10px;
 }
 
 .plan-title {
-  font-size: 24px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 26px;
   font-weight: 700;
   margin: 0 0 8px 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .plan-subtitle {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
 }
@@ -1305,77 +1831,268 @@ const CalendarPanel = defineComponent({
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .meta-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 16px;
-  background: var(--color-bg);
-  border-radius: 16px;
-  border: 1px solid rgba(0, 113, 227, 0.08);
+  padding: 18px;
+  background: var(--bg-primary);
+  border-radius: 20px;
+  border: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+}
+
+.meta-item:hover {
+  background: rgba(255, 107, 74, 0.05);
+  border-color: var(--accent-orange);
 }
 
 .meta-icon {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  color: var(--color-accent);
+  width: 20px;
+  height: 20px;
+  color: var(--accent-orange);
 }
 
 .meta-label {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  font-size: 11px;
+  color: var(--text-tertiary);
   margin: 0 0 4px 0;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .meta-value {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.4;
 }
 
+/* ==================== 计划内容样式 ==================== */
 .plan-content {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .content-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 18px;
   font-weight: 700;
-  margin: 0 0 16px 0;
-  color: var(--color-text-primary);
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
 }
 
 .title-icon {
   width: 20px;
   height: 20px;
-  color: var(--color-accent);
+  color: var(--accent-orange);
 }
 
 .content-body {
-  background: var(--color-bg);
+  background: var(--bg-primary);
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid rgba(0, 113, 227, 0.08);
+  border: 1px solid var(--border-light);
 }
 
-.content-body pre {
+.markdown-content {
+  color: var(--text-primary);
+  line-height: 1.75;
+}
+
+.markdown-content :deep(h1),
+.markdown-content :deep(h2),
+.markdown-content :deep(h3),
+.markdown-content :deep(h4) {
+  font-family: 'Space Grotesk', sans-serif;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+
+.markdown-content :deep(h1) {
+  font-size: 28px;
+  margin-top: 0;
+}
+
+.markdown-content :deep(h2) {
+  font-size: 22px;
+  margin-top: 24px;
+}
+
+.markdown-content :deep(h3) {
+  font-size: 18px;
+  margin-top: 20px;
+}
+
+.markdown-content :deep(h4) {
+  font-size: 15px;
+  margin-top: 14px;
+}
+
+.markdown-content :deep(p) {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.markdown-content :deep(ul) {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+
+.markdown-content :deep(li) {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.markdown-content :deep(strong) {
+  font-weight: 700;
+}
+
+.markdown-content :deep(code) {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 113, 227, 0.08);
+  font-size: 12px;
+}
+
+.entry-markdown {
+  width: 100%;
+}
+
+.entry-markdown :deep(h1) {
+  font-size: 22px;
+}
+
+.entry-markdown :deep(h2) {
+  font-size: 18px;
+}
+
+.entry-markdown :deep(h3) {
+  font-size: 16px;
+}
+
+.entry-markdown :deep(h4) {
+  font-size: 14px;
+}
+
+.entry-markdown :deep(p),
+.entry-markdown :deep(li) {
+  font-size: 14px;
+}
+
+.card-section-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 20px 0;
+}
+
+.management-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.management-text {
+  flex: 1;
+}
+
+.management-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+}
+
+.management-description {
   margin: 0;
-  white-space: pre-wrap;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
-  color: var(--color-text-primary);
+  color: var(--text-secondary);
 }
 
+.management-create-btn {
+  flex-shrink: 0;
+}
+
+/* ==================== 卡片头部样式 ==================== */
+.card-header {
+  margin-bottom: 20px;
+}
+
+.card-header h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.plan-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.card-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.card-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: var(--text-primary);
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ==================== 标签样式 ==================== */
+.plan-tags,
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 8px 16px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border-light);
+}
+
+.tag.small {
+  padding: 5px 12px;
+  font-size: 11px;
+}
+
+/* ==================== 操作按钮组 ==================== */
 .plan-actions {
   display: flex;
   flex-direction: column;
@@ -1384,22 +2101,131 @@ const CalendarPanel = defineComponent({
 
 .action-group {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-/* 详情主内容 */
-.detail-main {
+.detail-row {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
 }
 
+.detail-row:last-child {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-bottom: none;
+  padding-top: 12px;
+}
+
+.detail-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin: 0;
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.detail-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0;
+  padding: 12px;
+  background: var(--bg-primary);
+  border-radius: 12px;
+}
+
+/* ==================== 弹出训练卡片 ==================== */
+.board-entry-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.35);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 950;
+}
+
+.board-entry-card {
+  width: min(560px, 100%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  box-shadow: var(--shadow-elevated);
+  padding: 24px;
+  animation: modalIn 0.25s ease-out;
+}
+
+.board-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.board-entry-header h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.board-entry-plan {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  color: var(--border-light);
+  margin-bottom: 20px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.content-empty p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.empty-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+}
+
+/* ==================== 日历部分样式 ==================== */
 .calendar-section {
-  background: white;
-  border-radius: 20px;
+  background: var(--bg-elevated);
+  border-radius: 24px;
   padding: 28px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 82, 163, 0.08);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-soft);
 }
 
 .section-header {
@@ -1410,32 +2236,62 @@ const CalendarPanel = defineComponent({
 }
 
 .section-header h3 {
-  font-size: 20px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px;
   font-weight: 700;
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .calendar-nav {
   display: flex;
   align-items: center;
   gap: 16px;
+  justify-content: center;
 }
 
-.calendar-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  min-width: 180px;
-  text-align: center;
+.calendar-nav .btn.btn-icon {
+  background: transparent !important;
+  color: #1d1d1f !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
 }
 
+.calendar-nav .btn.btn-icon:hover {
+  background: rgba(0, 113, 227, 0.08) !important;
+  color: #1d1d1f !important;
+}
+
+.calendar-nav .btn.btn-icon svg {
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  stroke: #1d1d1f !important;
+  stroke-width: 2.5 !important;
+}
+
+/* ==================== 训练条目样式 ==================== */
 .training-entry {
-  background: var(--color-bg);
-  border-radius: 16px;
+  background: var(--bg-primary);
+  border-radius: 20px;
   padding: 24px;
   margin-top: 24px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
+  border: 1px solid var(--border-light);
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .entry-header {
@@ -1448,15 +2304,17 @@ const CalendarPanel = defineComponent({
 .entry-date {
   display: block;
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--accent-orange);
+  font-weight: 600;
   margin-bottom: 4px;
 }
 
 .entry-header h4 {
-  font-size: 18px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 20px;
   font-weight: 700;
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .entry-details {
@@ -1468,192 +2326,32 @@ const CalendarPanel = defineComponent({
 .detail-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .detail-item.full-width {
   grid-column: 1 / -1;
 }
 
-.detail-label {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  font-weight: 500;
-}
-
-.detail-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.detail-text {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--color-text-primary);
-  margin: 0;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 12px;
-  border: 1px solid rgba(0, 113, 227, 0.08);
-}
-
-/* 仪表板视图 */
-.dashboard-view {
-  margin-bottom: 32px;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr 320px;
-  gap: 24px;
-}
-
-.dashboard-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.current-plan-card,
-.training-content-card,
-.history-card {
-  background: white;
-  border-radius: 20px;
-  padding: 24px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 82, 163, 0.08);
-}
-
-.card-header {
-  margin-bottom: 20px;
-}
-
-.card-header h3 {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--color-text-primary);
-}
-
-.plan-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
-}
-
-.card-label {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 700;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.card-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 4px 0;
-  color: var(--color-text-primary);
-}
-
-.card-subtitle {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.plan-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.tag {
-  display: inline-block;
-  padding: 6px 12px;
-  background: var(--color-bg);
-  color: var(--color-text-primary);
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-}
-
-.tag.small {
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
-.content-details {
+/* ==================== 历史计划样式 ==================== */
+.history-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(0, 113, 227, 0.08);
-}
-
-.detail-row:last-child {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  border-bottom: none;
-}
-
-.content-empty {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.empty-icon {
-  width: 48px;
-  height: 48px;
-  color: rgba(0, 113, 227, 0.3);
-  margin: 0 auto 16px;
-}
-
-.empty-hint {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin: 4px 0 0 0;
-}
-
-.calendar-card {
-  background: white;
-  border-radius: 20px;
-  padding: 24px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 82, 163, 0.08);
-}
-
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .history-item {
-  background: var(--color-bg);
-  border-radius: 16px;
-  padding: 16px;
-  border: 1px solid rgba(0, 113, 227, 0.08);
+  background: var(--bg-primary);
+  border-radius: 20px;
+  padding: 18px;
+  border: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+}
+
+.history-item:hover {
+  border-color: var(--accent-orange);
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-2px);
 }
 
 .history-item-header {
@@ -1664,92 +2362,126 @@ const CalendarPanel = defineComponent({
 }
 
 .history-item-header h4 {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-  color: var(--color-text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
 }
 
 .item-subtitle {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0;
-  line-height: 1.4;
-}
-
-.item-tags {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 16px;
 }
 
 .item-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
-  color: var(--color-text-secondary);
+  padding: 48px 24px;
+  color: var(--text-secondary);
 }
 
-.empty-state-full {
+/* ==================== 空状态带日历 ==================== */
+.empty-state-with-calendar {
+  margin-bottom: 32px;
+}
+
+/* ==================== 占位卡片样式 ==================== */
+.placeholder-illustration {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.placeholder-illustration svg {
+  width: 80px;
+  height: 80px;
+}
+
+.placeholder-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.placeholder-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.placeholder-content-empty {
   text-align: center;
-  padding: 80px 40px;
-  max-width: 600px;
-  margin: 40px auto;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.empty-illustration {
-  width: 160px;
-  height: 160px;
-  margin: 0 auto 32px;
-  color: rgba(0, 113, 227, 0.1);
+.create-btn {
+  width: 100%;
+  margin-top: 20px;
 }
 
-.empty-description {
-  font-size: 16px;
-  color: var(--color-text-secondary);
-  margin: 12px 0 32px 0;
-  line-height: 1.6;
-}
-
-/* 模态框 */
+/* ==================== 模态框样式 ==================== */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .modal-container {
-  background: white;
-  border-radius: 24px;
+  background: var(--bg-elevated);
+  border-radius: 28px;
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.25);
+  animation: modalIn 0.3s ease-out;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .modal-container.wide {
-  max-width: 800px;
+  max-width: 840px;
 }
 
 .modal-header {
   padding: 24px 32px;
-  border-bottom: 1px solid rgba(0, 113, 227, 0.1);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1759,20 +2491,28 @@ const CalendarPanel = defineComponent({
   display: flex;
   align-items: center;
   gap: 12px;
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 20px;
   font-weight: 700;
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .modal-icon {
   width: 24px;
   height: 24px;
-  color: var(--color-accent);
+  color: var(--accent-orange);
 }
 
 .modal-close {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border-radius: 12px;
 }
 
 .modal-body {
@@ -1783,20 +2523,20 @@ const CalendarPanel = defineComponent({
 
 .modal-description {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin: 0 0 24px 0;
   line-height: 1.6;
 }
 
 .modal-footer {
-  padding: 24px 32px;
-  border-top: 1px solid rgba(0, 113, 227, 0.1);
+  padding: 20px 32px;
+  border-top: 1px solid var(--border-light);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
 }
 
-/* 训练日选择器 */
+/* ==================== 训练日选择器 ==================== */
 .weekday-selector {
   margin-bottom: 24px;
 }
@@ -1804,7 +2544,7 @@ const CalendarPanel = defineComponent({
 .weekday-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .weekday-option {
@@ -1813,37 +2553,61 @@ const CalendarPanel = defineComponent({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(0, 113, 227, 0.2);
-  border-radius: 12px;
+  border: 2px solid var(--border-light);
+  border-radius: 16px;
   background: transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 12px 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.weekday-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 14px;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.3s ease;
 }
 
 .weekday-option:hover {
-  border-color: var(--color-accent);
-  background: rgba(0, 113, 227, 0.05);
+  border-color: var(--accent-orange);
+  background: rgba(255, 107, 74, 0.03);
 }
 
 .weekday-option.selected {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: white;
+  border-color: var(--accent-orange);
+  background: rgba(255, 107, 74, 0.05);
+}
+
+.weekday-option.selected::before {
+  opacity: 0.15;
+  transform: scale(1);
 }
 
 .weekday-text {
   font-size: 14px;
   font-weight: 600;
+  color: var(--text-primary);
+  position: relative;
+  z-index: 2;
 }
 
 .weekday-check {
-  margin-top: 4px;
+  margin-top: 6px;
   width: 16px;
   height: 16px;
+  color: white;
 }
 
-/* 表单 */
+/* ==================== 表单样式 ==================== */
 .form-container {
   display: flex;
   flex-direction: column;
@@ -1854,6 +2618,12 @@ const CalendarPanel = defineComponent({
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .form-group.full-width {
@@ -1869,49 +2639,52 @@ const CalendarPanel = defineComponent({
 .label-text {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--text-primary);
 }
 
 .form-input,
 .form-textarea {
-  padding: 12px 16px;
-  border: 1px solid rgba(0, 113, 227, 0.2);
+  padding: 14px 16px;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   font-family: inherit;
   font-size: 14px;
-  color: var(--color-text-primary);
-  background: white;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
   transition: all 0.2s ease;
 }
 
 .form-input:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 0 3px rgba(255, 107, 74, 0.15);
+  background: white;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-tertiary);
 }
 
 .form-textarea {
   resize: vertical;
-  min-height: 120px;
+  min-height: 140px;
+  line-height: 1.6;
 }
 
-/* 保持原有的日历组件样式 */
+/* ==================== 日历组件深度样式 ==================== */
 :deep(.calendar-box) {
   margin-top: 0;
-  padding: 20px;
+  padding: 24px;
   border-radius: 20px;
-  background:
-    radial-gradient(circle at top left, rgba(0, 113, 227, 0.14), transparent 30%),
-    linear-gradient(180deg, rgba(248, 251, 255, 0.98), rgba(240, 246, 255, 0.94));
-  border: 1px solid rgba(0, 113, 227, 0.14);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 14px 28px rgba(0, 82, 163, 0.08);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-soft);
 }
 
-:deep(.calendar-head strong) {
-  color: var(--color-text-primary);
-  font-size: 22px;
-  font-weight: 800;
+:deep(.calendar-head) {
+  display: none;
 }
 
 :deep(.calendar-grid) {
@@ -1922,31 +2695,30 @@ const CalendarPanel = defineComponent({
 
 :deep(.calendar-weekday) {
   text-align: center;
-  padding: 10px 0;
-  color: var(--color-text-primary);
-  font-weight: 700;
+  padding: 12px 8px;
+  background: var(--bg-primary);
   border-radius: 12px;
-  background: var(--color-bg);
+  font-weight: 600;
   font-size: 13px;
+  color: var(--text-secondary);
 }
 
 :deep(.calendar-day) {
-  min-height: 128px;
-  padding: 12px;
+  min-height: 120px;
+  padding: 14px;
   border-radius: 16px;
-  background: linear-gradient(180deg, var(--color-surface), var(--color-bg));
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid rgba(0, 113, 227, 0.12);
-  box-shadow: 0 8px 18px rgba(0, 113, 227, 0.06);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  gap: 8px;
+  transition: all 0.2s ease;
 }
 
 :deep(.calendar-day:not(.empty):hover) {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 24px rgba(0, 113, 227, 0.1);
+  border-color: var(--accent-orange);
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-3px);
 }
 
 :deep(.calendar-day.empty) {
@@ -1956,13 +2728,13 @@ const CalendarPanel = defineComponent({
 }
 
 :deep(.calendar-day.today) {
-  border-color: rgba(0, 113, 227, 0.5);
+  border-color: var(--accent-orange);
+  background: rgba(255, 107, 74, 0.05);
 }
 
 :deep(.calendar-day.active) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(229, 239, 255, 0.98));
-  border-color: rgba(0, 113, 227, 0.5);
-  box-shadow: 0 14px 30px rgba(0, 113, 227, 0.16);
+  background: linear-gradient(135deg, rgba(255, 107, 74, 0.1), rgba(255, 159, 110, 0.05));
+  border-color: var(--accent-orange);
 }
 
 :deep(.calendar-day-top) {
@@ -1972,107 +2744,109 @@ const CalendarPanel = defineComponent({
 }
 
 :deep(.day-number) {
-  color: var(--color-text-primary);
-  font-weight: 800;
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 :deep(.day-badge) {
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent));
-  color: #fff;
-  font-size: 11px;
+  padding: 4px 10px;
+  background: var(--primary-gradient);
+  color: white;
+  border-radius: 12px;
+  font-size: 10px;
   font-weight: 700;
 }
 
 :deep(.day-action) {
   width: 100%;
-  padding: 9px 10px;
-  border-radius: 12px;
+  padding: 10px;
+  border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
-  color: #fff;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .dashboard-grid {
-    grid-template-columns: 280px 1fr 280px;
-    gap: 20px;
+:deep(.day-action:hover) {
+  background: var(--primary-gradient);
+  color: white;
+  transform: scale(1.02);
+}
+
+:deep(.btn-ghost) {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+:deep(.btn-ghost:hover) {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ==================== 响应式设计 ==================== */
+@media (max-width: 1280px) {
+  .empty-dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 
-  .detail-view {
-    grid-template-columns: 320px 1fr;
-    gap: 24px;
+  .detail-sidebar,
+  .dashboard-sidebar {
+    order: 2;
+  }
+
+  .detail-main,
+  .dashboard-main {
+    order: 1;
+  }
+}
+
+@media (max-width: 960px) {
+  .dashboard-top,
+  .dashboard-bottom,
+  .dashboard-right {
+    display: flex;
+    flex-direction: column;
   }
 }
 
 @media (max-width: 992px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
+  .page-container {
+    padding: 20px 16px 20px 16px;
   }
 
   .detail-view {
     grid-template-columns: 1fr;
+    gap: 24px;
   }
 
-  .dashboard-sidebar {
-    order: 3;
+  .dashboard-grid,
+  .empty-dashboard-grid {
+    gap: 20px;
   }
 
-  .dashboard-main {
-    order: 2;
-  }
-
-  .dashboard-sidebar:first-child {
-    order: 1;
+  .weekday-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
   }
 
   .form-grid {
     grid-template-columns: 1fr;
   }
 
-  .weekday-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .page-container {
-    padding: 16px;
-  }
-
-  .page-header {
-    padding: 24px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .plan-card,
-  .calendar-section,
-  .current-plan-card,
-  .training-content-card,
-  .history-card,
-  .calendar-card {
-    padding: 20px;
-  }
-
   .modal-container {
-    margin: 0;
-    border-radius: 0;
-    max-height: 100vh;
+    margin: 10px;
+    border-radius: 20px;
   }
 
   .modal-header,
@@ -2080,98 +2854,107 @@ const CalendarPanel = defineComponent({
   .modal-footer {
     padding: 20px;
   }
-
-  :deep(.calendar-day) {
-    min-height: 100px;
-    padding: 10px;
-  }
-
-  .weekday-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
-@media (max-width: 480px) {
-  .header-title {
-    font-size: 24px;
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 20px;
   }
 
-  .plan-title {
-    font-size: 20px;
+  .management-intro {
+    flex-direction: column;
   }
 
-  .weekday-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .entry-details {
-    grid-template-columns: 1fr;
-  }
-
-  .action-group {
-    flex-wrap: wrap;
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .btn {
     width: 100%;
     justify-content: center;
   }
-}
 
-/* 空状态带日历 */
-.empty-state-with-calendar {
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
-  margin-bottom: 32px;
-}
-
-.calendar-empty-section {
-  background: white;
-  border-radius: 20px;
-  padding: 28px;
-  border: 1px solid rgba(0, 113, 227, 0.1);
-  box-shadow: 0 16px 40px rgba(0, 82, 163, 0.08);
-}
-
-.calendar-empty-section .calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.calendar-empty-section .calendar-header h3 {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--color-text-primary);
-}
-
-.calendar-empty-section .calendar-nav {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.calendar-empty-section .calendar-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  min-width: 180px;
-  text-align: center;
-}
-
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .empty-state-with-calendar {
-    gap: 24px;
+  .action-group {
+    flex-wrap: wrap;
   }
 
-  .calendar-empty-section {
-    padding: 20px;
+  .btn.small {
+    padding: 12px 16px;
+    font-size: 13px;
   }
 
+  .weekday-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  :deep(.calendar-day) {
+    min-height: 100px;
+    padding: 10px;
+  }
+
+  :deep(.day-number) {
+    font-size: 14px;
+  }
+
+  :deep(.day-badge) {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  :deep(.day-action) {
+    font-size: 10px;
+    padding: 8px;
+  }
+
+  .modal-container.wide {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 26px;
+  }
+
+  .plan-title,
+  .card-title {
+    font-size: 18px;
+  }
+
+  .section-header h3,
+  .calendar-title {
+    font-size: 16px;
+  }
+
+  :deep(.calendar-weekday) {
+    font-size: 11px;
+    padding: 8px 6px;
+  }
+
+  :deep(.day-number) {
+    font-size: 13px;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .entry-details {
+    grid-template-columns: 1fr;
+  }
+
+  .placeholder-illustration svg {
+    width: 60px;
+    height: 60px;
+  }
+
+  .placeholder-content-empty svg {
+    width: 40px;
+    height: 40px;
+  }
 }
 </style>

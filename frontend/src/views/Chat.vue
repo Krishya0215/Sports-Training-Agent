@@ -97,7 +97,7 @@
                 </div>
 
                 <!-- 显示正常回复 -->
-                <p v-if="message.content" class="message-text">{{ message.content }}</p>
+                <div v-if="message.content" class="message-text markdown-message" v-html="renderMarkdown(message.content)"></div>
                 <p v-else-if="message.role === 'assistant' && loading" class="message-text loading">
                   <span class="loading-dots">●●●</span>
                 </p>
@@ -241,7 +241,7 @@
 
           <section class="modal-section">
             <h3>计划详情</h3>
-            <pre>{{ previewPlan.content }}</pre>
+            <div class="markdown-message preview-markdown" v-html="renderMarkdown(previewPlan.content)"></div>
           </section>
 
           <section class="modal-section">
@@ -588,9 +588,88 @@ const removeMarkdownFormat = (text = '') => {
   return cleaned
 }
 
+const escapeHtml = (text = '') =>
+  String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+const formatInlineMarkdown = (text = '') =>
+  escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+
+const renderMarkdown = (content = '') => {
+  const lines = String(content || '').replace(/\r\n/g, '\n').split('\n')
+  const html = []
+  let inList = false
+  let inParagraph = false
+
+  const closeList = () => {
+    if (inList) {
+      html.push('</ul>')
+      inList = false
+    }
+  }
+
+  const closeParagraph = () => {
+    if (inParagraph) {
+      html.push('</p>')
+      inParagraph = false
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+
+    if (!line) {
+      closeList()
+      closeParagraph()
+      continue
+    }
+
+    const headingMatch = line.match(/^(#{1,4})\s+(.+)$/)
+    if (headingMatch) {
+      closeList()
+      closeParagraph()
+      const level = Math.min(4, headingMatch[1].length)
+      html.push(`<h${level}>${formatInlineMarkdown(headingMatch[2].trim())}</h${level}>`)
+      continue
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      closeParagraph()
+      if (!inList) {
+        html.push('<ul>')
+        inList = true
+      }
+      html.push(`<li>${formatInlineMarkdown(line.replace(/^[-*]\s+/, ''))}</li>`)
+      continue
+    }
+
+    if (!inParagraph) {
+      closeList()
+      html.push('<p>')
+      inParagraph = true
+    } else {
+      html.push('<br>')
+    }
+
+    html.push(formatInlineMarkdown(line))
+  }
+
+  closeList()
+  closeParagraph()
+
+  return html.join('')
+}
+
 const normalizeMessage = (message = {}) => ({
   role: message.role || 'assistant',
-  content: message.role === 'assistant' ? removeMarkdownFormat(message.content || '') : (message.content || ''),
+  content: message.content || '',
   thinking: removeMarkdownFormat(message.thinking || ''), // 清理思考过程（总是AI生成）
   isThinkingExpanded: message.isThinkingExpanded !== undefined ? message.isThinkingExpanded : false, // 思考过程是否展开
   timestamp: message.timestamp ? new Date(message.timestamp) : new Date(),
@@ -909,7 +988,7 @@ const sendMessage = async (text = null, options = {}) => {
           messages.value[assistantMessageIndex].thinking = removeMarkdownFormat(thinkingContent)
         } else if (type === 'answer') {
           answerContent += chunk
-          messages.value[assistantMessageIndex].content = removeMarkdownFormat(answerContent)
+          messages.value[assistantMessageIndex].content = answerContent
         }
         scrollToBottom()
       },
@@ -1121,11 +1200,37 @@ const buildTrainingPrompt = () => {
   return [
     '请你扮演专业 AI 运动教练，根据以下用户问卷信息生成一个 1 个月训练计划。',
     '输出格式要求：',
-    '1. 先给出计划标题、计划概述。',
-    '2. 按周和按训练日安排训练内容，尽量细化到 4 周。',
-    '3. 每个训练日写清训练主题、建议时长、训练重点和恢复建议。',
-    '4. 如用户有伤病困扰，请主动规避高风险动作并给出替代方案。',
-    '5. 回复尽量结构化，方便后续以卡片和详情形式展示。',
+    '1. 先输出“计划标题”和“计划概述”两个部分。',
+    '2. 训练主体必须按周展开，尽量细化到完整 4 周；每周下再按训练日展开。',
+    '3. 每个训练日都必须明确写出：训练主题、建议时长、训练重点、恢复建议。',
+    '4. 如果用户有伤病困扰，必须主动规避高风险动作，并在对应训练日中写出替代方案或调整建议。',
+    '5. 保持结构化输出，标题清晰，便于后续按卡片和训练日详情解析。',
+    '6. 不要只给原则性建议，必须给出可执行的每日安排。',
+    '',
+    '请严格遵循下面的标准 Markdown 输出骨架：',
+    '# 计划标题',
+    '',
+    '## 计划概述',
+    '这里写目标、周期、每周频次、强度和注意事项。',
+    '',
+    '## 第1周',
+    '',
+    '### 训练日1',
+    '- 训练主题：',
+    '- 建议时长：',
+    '- 训练重点：',
+    '- 恢复建议：',
+    '- 替代方案：如无伤病风险不用写',
+    '',
+    '### 训练日2',
+    '- 训练主题：',
+    '- 建议时长：',
+    '- 训练重点：',
+    '- 恢复建议：',
+    '- 替代方案：如无伤病风险不用写',
+    '',
+    '## 第2周',
+    '...',
     '',
     '用户信息：',
     `- 训练目标：${questionnaireData.value.goal}`,
@@ -1466,6 +1571,58 @@ watch(
   margin: 0;
   line-height: 1.7;
   white-space: pre-wrap;
+}
+
+.markdown-message {
+  white-space: normal;
+}
+
+.markdown-message :deep(h1),
+.markdown-message :deep(h2),
+.markdown-message :deep(h3),
+.markdown-message :deep(h4) {
+  margin: 0 0 12px;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+}
+
+.markdown-message :deep(h1) {
+  font-size: 28px;
+}
+
+.markdown-message :deep(h2) {
+  font-size: 22px;
+  margin-top: 22px;
+}
+
+.markdown-message :deep(h3) {
+  font-size: 18px;
+  margin-top: 18px;
+}
+
+.markdown-message :deep(h4) {
+  font-size: 15px;
+  margin-top: 12px;
+}
+
+.markdown-message :deep(p) {
+  margin: 0 0 12px;
+}
+
+.markdown-message :deep(ul) {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.markdown-message :deep(li) {
+  margin: 0 0 8px;
+}
+
+.markdown-message :deep(code) {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 113, 227, 0.08);
+  font-size: 13px;
 }
 
 .inline-plan-btn {
@@ -1842,11 +1999,7 @@ watch(
   margin: 0 0 12px;
 }
 
-.modal-section pre {
-  margin: 0;
-  white-space: pre-wrap;
-  line-height: 1.7;
-  font-family: inherit;
+.preview-markdown {
   color: var(--color-text-primary);
 }
 
