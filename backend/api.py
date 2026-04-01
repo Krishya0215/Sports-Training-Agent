@@ -2,16 +2,17 @@
 运动训练知识问答系统 - FastAPI后端接口
 为Vue前端提供RESTful API
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 import sys
 from pathlib import Path
 import json
 import asyncio
+import threading
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -20,6 +21,9 @@ from agent.graph_agent import SportsTrainingAgent
 from agent.multi_agent_system import MultiAgentTrainingSystem
 from utils.logger_handler import logger
 from backend.auth import AuthService
+from backend.database import db
+from backend.memory_service import memory_service
+from backend.memory_consolidation import consolidation_service
 
 app = FastAPI(
     title="运动训练知识问答API",
@@ -41,9 +45,7 @@ agent = None
 multi_agent_system = None
 chat_history = []
 
-# 数据存储（生产环境应使用数据库）
-training_plans = []  # 训练计划
-training_records = []  # 训练记录
+DATA_DIR = Path(__file__).parent / "data"
 users = {  # 用户数据
     "user": {"username": "user", "password": "user123", "role": "user"},
     "admin": {"username": "admin", "password": "admin123", "role": "admin"}
@@ -91,12 +93,67 @@ class TrainingRecord(BaseModel):
     """训练记录模型"""
     date: str
     training_type: str
+    plan_id: Optional[int] = None
+    plan_session_key: Optional[str] = None
     duration: Optional[int] = None  # 分钟
     intensity: Optional[str] = None  # 低/中/高
     feedback: Optional[str] = None  # 用户反馈
     fatigue_level: Optional[int] = None  # 疲劳度 1-5
     pain_level: Optional[int] = None  # 疼痛度 1-5
     notes: Optional[str] = None
+    completion_status: Optional[str] = "completed"
+
+
+class DailyRecord(BaseModel):
+    """饮食记录模型"""
+    date: str
+    meal_type: str  # 早餐/午餐/晚餐/加餐/零食
+    food_content: str
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class WeightRecord(BaseModel):
+    """体重记录模型"""
+    date: str
+    weight: float  # kg
+    body_fat: Optional[float] = None  # %
+    chest_circumference: Optional[float] = None  # cm
+    waist_circumference: Optional[float] = None  # cm
+    hip_circumference: Optional[float] = None  # cm
+    notes: Optional[str] = None
+
+
+class UserProfilePayload(BaseModel):
+    goal: Optional[str] = None
+    preferred_method: Optional[str] = None
+    weekly_days: Optional[int] = None
+    daily_duration: Optional[int] = None
+    intensity_level: Optional[str] = None
+    injury_status: Optional[str] = None
+    injury_detail: Optional[str] = None
+    fitness_level: Optional[str] = None
+    age_range: Optional[str] = None
+    gender: Optional[str] = None
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    profile_source: Optional[str] = "manual"
+
+
+class MemoryEpisodePayload(BaseModel):
+    event_type: str
+    event_time: Optional[str] = None
+    conversation_id: Optional[str] = None
+    plan_id: Optional[int] = None
+    record_id: Optional[int] = None
+    question: Optional[str] = None
+    answer_summary: Optional[str] = None
+    event_summary: Optional[str] = None
+    trigger_source: Optional[str] = None
+    payload: Optional[Dict[str, Any]] = None
+    importance_score: Optional[float] = 0
+    tags: Optional[List[str]] = None
 
 
 class LoginRequest(BaseModel):
@@ -140,6 +197,328 @@ class MemorySummary(BaseModel):
     perceptual_documents: int
 
 
+def _extract_token_from_header(authorization: Optional[str]) -> Optional[str]:
+    if not authorization:
+        return None
+    value = authorization.strip()
+    if value.lower().startswith("bearer "):
+        return value[7:].strip()
+    return value or None
+
+
+def _require_current_user(authorization: Optional[str]) -> Dict[str, Any]:
+    token = _extract_token_from_header(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="未登录或缺少访问令牌")
+
+    user = db.get_user_by_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="登录状态已失效，请重新登录")
+    return user
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_profile_from_questionnaire(questionnaire: Optional[Dict[str, Any]], source: str) -> Optional[Dict[str, Any]]:
+    if not questionnaire:
+        return None
+
+    injury_status = questionnaire.get("injury")
+    injury_detail = questionnaire.get("injury_detail")
+    if injury_status == "other":
+        injury_status = "其他"
+
+    return {
+        "goal": questionnaire.get("goal"),
+        "preferred_method": questionnaire.get("method") or questionnaire.get("preferred_method"),
+        "weekly_days": _safe_int(questionnaire.get("weekly_days")),
+        "daily_duration": _safe_int(questionnaire.get("daily_duration")),
+        "intensity_level": questionnaire.get("intensity") or questionnaire.get("intensity_level"),
+        "injury_status": injury_status,
+        "injury_detail": injury_detail,
+        "profile_source": source
+    }
+
+
+def _sync_profile_semantic_memory(user_id: int, profile: Dict[str, Any], source_event_id: Optional[int] = None):
+    semantic_mappings = [
+        ("profile", "goal", profile.get("goal")),
+        ("preference", "preferred_method", profile.get("preferred_method")),
+        ("profile", "weekly_days", str(profile.get("weekly_days")) if profile.get("weekly_days") is not None else None),
+        ("habit", "daily_duration", str(profile.get("daily_duration")) if profile.get("daily_duration") is not None else None),
+        ("profile", "intensity_level", profile.get("intensity_level")),
+        ("constraint", "injury_status", profile.get("injury_status")),
+        ("constraint", "injury_detail", profile.get("injury_detail"))
+    ]
+
+    for category, key, value in semantic_mappings:
+        if value in (None, ""):
+            continue
+        db.upsert_semantic_fact(
+            user_id=user_id,
+            fact_category=category,
+            fact_key=key,
+            fact_value=str(value),
+            confidence=0.9,
+            source_event_id=source_event_id,
+            source_type="profile"
+        )
+
+
+def _record_episode(user_id: int, event: Dict[str, Any]) -> Dict[str, Any]:
+    return db.create_episodic_event(user_id, event)
+
+
+def _update_semantic_from_training_record(user_id: int, record: Dict[str, Any], source_event_id: Optional[int] = None):
+    """
+    从训练记录更新语义记忆（增强版）
+
+    提取：
+    - 疼痛水平 → 风险评估
+    - 疲劳度 → 适应性规则
+    - 训练类型 → 偏好更新
+    - 训练备注 → 关键词提取
+    - 训练时段 → 时段偏好
+    """
+    pain_level = _safe_int(record.get("pain_level"))
+    fatigue_level = _safe_int(record.get("fatigue_level"))
+    training_type = record.get("training_type")
+    notes = record.get("notes", "")
+    record_date = record.get("date")
+
+    # 1. 疼痛风险评估
+    if pain_level is not None:
+        if pain_level >= 3:
+            db.upsert_semantic_fact(
+                user_id=user_id,
+                fact_category="risk",
+                fact_key="recent_pain_level",
+                fact_value=str(pain_level),
+                confidence=0.8,
+                source_event_id=source_event_id,
+                source_type="training_record"
+            )
+
+        # 提取疼痛部位（从备注中）
+        if notes and pain_level >= 2:
+            pain_keywords = {
+                "膝盖": ["膝盖", "膝", "knee"],
+                "腰部": ["腰", "背", "lower back"],
+                "肩部": ["肩", "shoulder"],
+                "脚踝": ["脚踝", "踝", "ankle"],
+                "手腕": ["手腕", "腕", "wrist"]
+            }
+
+            for body_part, keywords in pain_keywords.items():
+                if any(kw in notes.lower() for kw in keywords):
+                    db.upsert_semantic_fact(
+                        user_id=user_id,
+                        fact_category="constraint",
+                        fact_key=f"pain_{body_part}",
+                        fact_value=f"{body_part}疼痛(疼痛度{pain_level})",
+                        confidence=0.7,
+                        source_event_id=source_event_id,
+                        source_type="training_record"
+                    )
+                    break
+
+    # 2. 疲劳度分析
+    if fatigue_level is not None:
+        if fatigue_level >= 4:
+            db.upsert_semantic_fact(
+                user_id=user_id,
+                fact_category="adaptation_rule",
+                fact_key="recent_high_fatigue",
+                fact_value="true",
+                confidence=0.75,
+                source_event_id=source_event_id,
+                source_type="training_record"
+            )
+
+        # 疲劳度趋势
+        recent_records = db.list_training_records(user_id, limit=10)
+        if len(recent_records) >= 3:
+            recent_fatigue = [_safe_int(r.get("fatigue_level")) for r in recent_records if _safe_int(r.get("fatigue_level")) is not None]
+            if recent_fatigue:
+                avg_fatigue = sum(recent_fatigue) / len(recent_fatigue)
+                if avg_fatigue >= 3.5:
+                    db.upsert_semantic_fact(
+                        user_id=user_id,
+                        fact_category="adaptation_rule",
+                        fact_key="avg_fatigue_high",
+                        fact_value="true",
+                        confidence=0.7,
+                        source_event_id=source_event_id,
+                        source_type="training_record"
+                    )
+
+    # 3. 训练类型偏好更新（简单的计数逻辑）
+    if training_type:
+        # 获取历史训练类型统计
+        all_records = db.list_training_records(user_id, limit=50)
+        type_counts = {}
+        for r in all_records:
+            t = r.get("training_type")
+            if t:
+                type_counts[t] = type_counts.get(t, 0) + 1
+
+        total = sum(type_counts.values())
+        if total >= 5 and training_type in type_counts:
+            type_ratio = type_counts[training_type] / total
+            if type_ratio >= 0.4:  # 某类型占比超过40%
+                db.upsert_semantic_fact(
+                    user_id=user_id,
+                    fact_category="preference",
+                    fact_key="preferred_training_type",
+                    fact_value=training_type,
+                    confidence=min(0.9, type_ratio + 0.3),
+                    source_event_id=source_event_id,
+                    source_type="training_record"
+                )
+
+    # 4. 从备注中提取训练相关关键词
+    if notes:
+        keyword_mappings = {
+            "喜欢": ["喜欢", "开心", "感觉不错", "good", "like"],
+            "困难": ["困难", "累", "challenging", "hard"],
+            "容易": ["轻松", "easy", "简单"],
+            "受伤": ["疼", "痛", "伤", "hurt", "pain"],
+            "进步": ["进步", "提高", "improve", "better"]
+        }
+
+        for sentiment, keywords in keyword_mappings.items():
+            if any(kw in notes.lower() for kw in keywords):
+                db.upsert_semantic_fact(
+                    user_id=user_id,
+                    fact_category="feedback",
+                    fact_key=f"recent_{sentiment}",
+                    fact_value="true",
+                    confidence=0.6,
+                    source_event_id=source_event_id,
+                    source_type="training_record"
+                )
+                break
+
+    # 5. 提炼时段偏好（基于记录的时间）
+    if record_date and notes:
+        # 尝试从备注中提取时段信息
+        time_keywords = {
+            "morning": ["早", "晨", "morning"],
+            "afternoon": ["午", "下午", "afternoon"],
+            "evening": ["晚", "evening", "night"]
+        }
+
+        for time_slot, keywords in time_keywords.items():
+            if any(kw in notes.lower() for kw in keywords):
+                db.upsert_semantic_fact(
+                    user_id=user_id,
+                    fact_category="habit",
+                    fact_key="training_time_slot",
+                    fact_value=time_slot,
+                    confidence=0.65,
+                    source_event_id=source_event_id,
+                    source_type="training_record"
+                )
+                break
+
+
+def _update_semantic_from_weekday_selection(user_id: int, weekdays: List[str], source_event_id: Optional[int] = None):
+    """
+    从训练日选择更新语义记忆
+
+    分析：
+    - 避开周末
+    - 偏好特定周几
+    - 训练日数量
+    """
+    if not weekdays:
+        return
+
+    weekday_map = {"周一": 0, "周二": 1, "周三": 2, "周四": 3, "周五": 4, "周六": 5, "周日": 6}
+    weekday_numbers = [weekday_map.get(w) for w in weekdays if w in weekday_map]
+
+    if not weekday_numbers:
+        return
+
+    # 检查是否避开周末
+    has_weekend = any(w in [5, 6] for w in weekday_numbers)
+    has_weekday = any(w in [0, 1, 2, 3, 4] for w in weekday_numbers)
+
+    if has_weekday and not has_weekend:
+        db.upsert_semantic_fact(
+            user_id=user_id,
+            fact_category="habit",
+            fact_key="avoid_weekends",
+            fact_value="true",
+            confidence=0.85,
+            source_event_id=source_event_id,
+            source_type="plan_update"
+        )
+
+    # 检查训练日数量偏好
+    weekly_days = len(weekday_numbers)
+    if weekly_days <= 3:
+        db.upsert_semantic_fact(
+            user_id=user_id,
+            fact_category="preference",
+            fact_key="weekly_training_days",
+            fact_value=str(weekly_days),
+            confidence=0.8,
+            source_event_id=source_event_id,
+            source_type="plan_update"
+        )
+
+    # 找出最常选择的周几
+    if len(weekday_numbers) >= 2:
+        weekday_counts = {}
+        for w in weekday_numbers:
+            weekday_counts[w] = weekday_counts.get(w, 0) + 1
+
+        max_weekday = max(weekday_counts.items(), key=lambda x: x[1])
+        if max_weekday[1] >= 2:  # 至少选择过2次
+            weekday_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+            db.upsert_semantic_fact(
+                user_id=user_id,
+                fact_category="habit",
+                fact_key="preferred_weekday",
+                fact_value=str(max_weekday[0]),
+                confidence=0.75,
+                source_event_id=source_event_id,
+                source_type="plan_update"
+            )
+
+
+def _build_memory_dashboard(user_id: int) -> Dict[str, Any]:
+    agent_summary = agent.get_memory_summary() if agent else {}
+    semantic_facts = db.list_semantic_facts(user_id)[:5]
+    recent_events = db.list_episodic_events(user_id, limit=5)
+
+    return {
+        "working_memory": {
+            "message_count": agent_summary.get("working_memory_size", 0)
+        },
+        "episodic_memory": {
+            "event_count": db.count_episodic_events(user_id),
+            "recent_events": recent_events
+        },
+        "semantic_memory": {
+            "fact_count": db.count_semantic_facts(user_id),
+            "top_facts": semantic_facts
+        },
+        "perceptual_memory": {
+            "asset_count": db.count_perceptual_assets(),
+            "document_count": agent_summary.get("perceptual_documents", 0)
+        }
+    }
+
+
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化Agent"""
@@ -153,6 +532,7 @@ async def startup_event():
     logger.info("多智能体系统初始化完成")
 
 
+
 @app.get("/")
 async def root():
     """根路径"""
@@ -164,20 +544,40 @@ async def root():
 
 
 @app.post("/api/query")
-async def query(request: QueryRequest):
+async def query(request: QueryRequest, authorization: Optional[str] = Header(None)):
     """
     处理用户问题查询（流式响应）
     支持单智能体和多智能体模式
     流式输出思考过程和答案
-    
+
     Args:
         request: 包含问题的请求对象
-        
+
     Returns:
         流式响应
     """
     async def generate():
         try:
+            current_user = None
+            memory_context = None
+            token = _extract_token_from_header(authorization)
+            if token:
+                current_user = db.get_user_by_token(token)
+
+            # 获取用户记忆上下文
+            if current_user:
+                memory_context = memory_service.get_user_memory_context(current_user["id"])
+                memory_context["user_id"] = current_user["id"]  # 添加用户ID以便构建提示词
+                memory_prompt = memory_service.build_memory_prompt(current_user["id"], memory_context)
+                logger.debug(f"获取用户记忆上下文: user_id={current_user['id']}, "
+                            f"semantic_facts={len(memory_context.get('semantic_profile', {}))}")
+
+            if current_user and request.user_profile:
+                profile = _build_profile_from_questionnaire(request.user_profile, request.user_profile.get("source", "chat"))
+                if profile:
+                    saved_profile = db.upsert_user_profile(current_user["id"], profile)
+                    _sync_profile_semantic_memory(current_user["id"], saved_profile)
+
             # 根据请求选择使用单智能体或多智能体系统
             if request.use_multi_agent:
                 if not multi_agent_system:
@@ -185,30 +585,84 @@ async def query(request: QueryRequest):
                     return
                 
                 logger.info(f"收到多智能体查询: {request.question}")
-                
-                # 使用多智能体系统处理
-                result = multi_agent_system.process_request(
-                    request.question,
-                    request.user_profile
-                )
-                
+
+                loop = asyncio.get_running_loop()
+                event_queue: asyncio.Queue = asyncio.Queue()
+                result_holder = {"result": None, "error": None}
+                processing_done = threading.Event()
+
+                def stream_callback(data):
+                    loop.call_soon_threadsafe(event_queue.put_nowait, data)
+
+                def run_multi_agent():
+                    try:
+                        # 将记忆上下文注入到 user_profile
+                        enhanced_profile = request.user_profile or {}
+                        if memory_context:
+                            enhanced_profile = {
+                                **enhanced_profile,
+                                "_memory_context": memory_context,
+                                "_memory_prompt": memory_prompt
+                            }
+                        result_holder["result"] = multi_agent_system.process_request(
+                            request.question,
+                            enhanced_profile,
+                            stream_callback=stream_callback
+                        )
+                    except Exception as exc:
+                        result_holder["error"] = exc
+                    finally:
+                        processing_done.set()
+                        loop.call_soon_threadsafe(event_queue.put_nowait, {"type": "_processing_done"})
+
+                threading.Thread(target=run_multi_agent, daemon=True).start()
+
+                yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': False}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.05)
+                yield f"data: {json.dumps({'type': 'progress_log', 'message': '正在开始分析你的需求'}, ensure_ascii=False)}\n\n"
+
+                while True:
+                    event = await event_queue.get()
+                    event_type = event.get("type")
+
+                    if event_type == "_processing_done":
+                        break
+
+                    if event_type == "progress_log":
+                        yield f"data: {json.dumps({'type': 'progress_log', 'message': event.get('message', '')}, ensure_ascii=False)}\n\n"
+                        continue
+
+                    if event_type == "coach_result":
+                        yield f"data: {json.dumps({'type': 'coach_result', 'coach': event.get('coach', {})}, ensure_ascii=False)}\n\n"
+                        continue
+
+                if result_holder["error"]:
+                    raise result_holder["error"]
+
+                result = result_holder["result"] or {}
                 thinking = result.get("thinking", "")
-                answer = result["response"]
+                answer = result.get("response", "")
+                structured_response = result.get("structured_response", {}) or {}
+                scheduler = structured_response.get("scheduler", {}) or {}
+                coach_catalog = structured_response.get("coaches", []) or []
                 
             else:
                 if not agent:
                     yield f"data: {json.dumps({'type': 'answer', 'content': 'Agent未初始化', 'done': True}, ensure_ascii=False)}\n\n"
                     return
-                
+
                 logger.info(f"收到单智能体查询: {request.question}")
-                
-                # 使用单智能体处理
-                result = agent.query(request.question)
+
+                # 使用单智能体处理，注入记忆上下文
+                result = agent.query(request.question, memory_context=memory_context)
                 thinking = result.get("thinking", "")
                 answer = result.get("answer", "")
-            
-            # 先流式输出思考过程
-            if thinking:
+                structured_response = {}
+                scheduler = {}
+                coach_catalog = []
+
+            # 单智能体仍保留原有思考过程流式输出
+            if thinking and not request.use_multi_agent:
                 yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': False}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.1)
                 
@@ -239,6 +693,21 @@ async def query(request: QueryRequest):
                 # 思考过程完成
                 yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.3)  # 思考和答案之间的延迟
+
+            if request.use_multi_agent:
+                yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.1)
+
+            if request.use_multi_agent and (scheduler or coach_catalog):
+                scheduler_event = {
+                    "type": "scheduler",
+                    "content": "",
+                    "done": False,
+                    "scheduler": scheduler,
+                    "coaches": coach_catalog
+                }
+                yield f"data: {json.dumps(scheduler_event, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.1)
             
             # 再流式输出最终答案
             yield f"data: {json.dumps({'type': 'answer', 'content': '', 'done': False}, ensure_ascii=False)}\n\n"
@@ -261,8 +730,25 @@ async def query(request: QueryRequest):
                 "answer": answer,
                 "thinking": thinking,
                 "timestamp": datetime.now(),
-                "mode": "multi_agent" if request.use_multi_agent else "single_agent"
+                "mode": "multi_agent" if request.use_multi_agent else "single_agent",
+                "structured_response": structured_response
             })
+
+            if current_user:
+                _record_episode(current_user["id"], {
+                    "event_type": "coach_chat",
+                    "question": request.question,
+                    "answer_summary": answer[:240],
+                    "event_summary": f"用户发起了一次{'多智能体' if request.use_multi_agent else '单智能体'}咨询",
+                    "trigger_source": "chat_query",
+                    "payload": {
+                        "use_multi_agent": request.use_multi_agent,
+                        "user_profile": request.user_profile or {},
+                        "mode": "multi_agent" if request.use_multi_agent else "single_agent"
+                    },
+                    "importance_score": 0.5,
+                    "tags": ["chat", "qa"]
+                })
             
             # 发送完成信号
             yield f"data: {json.dumps({'type': 'answer', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
@@ -292,7 +778,7 @@ async def query(request: QueryRequest):
 
 
 @app.post("/api/query/sync", response_model=QueryResponse)
-async def query_sync(request: QueryRequest):
+async def query_sync(request: QueryRequest, authorization: Optional[str] = Header(None)):
     """
     处理用户问题查询（非流式，兼容旧版本）
     
@@ -305,6 +791,11 @@ async def query_sync(request: QueryRequest):
     try:
         if not agent:
             raise HTTPException(status_code=500, detail="Agent未初始化")
+
+        current_user = None
+        token = _extract_token_from_header(authorization)
+        if token:
+            current_user = db.get_user_by_token(token)
         
         logger.info(f"收到查询: {request.question}")
         result = agent.query(request.question)
@@ -320,6 +811,20 @@ async def query_sync(request: QueryRequest):
             "thinking": thinking,
             "timestamp": datetime.now()
         })
+
+        if current_user:
+            _record_episode(current_user["id"], {
+                "event_type": "coach_chat",
+                "question": request.question,
+                "answer_summary": answer[:240],
+                "event_summary": "用户发起了一次同步问答",
+                "trigger_source": "chat_query_sync",
+                "payload": {
+                    "user_profile": request.user_profile or {}
+                },
+                "importance_score": 0.4,
+                "tags": ["chat", "sync"]
+            })
         
         return QueryResponse(
             answer=answer,
@@ -462,7 +967,7 @@ async def get_knowledge_stats():
 
 
 @app.get("/api/memory/summary", response_model=MemorySummary)
-async def get_memory_summary():
+async def get_memory_summary(authorization: Optional[str] = Header(None)):
     """
     获取记忆系统摘要
     
@@ -472,22 +977,24 @@ async def get_memory_summary():
     try:
         if not agent:
             raise HTTPException(status_code=500, detail="Agent未初始化")
-        
+        user = _require_current_user(authorization)
         summary = agent.get_memory_summary()
         
         return MemorySummary(
             working_memory_size=summary.get('working_memory_size', 0),
-            episodic_memory_size=summary.get('episodic_memory_size', 0),
-            semantic_concepts=summary.get('semantic_concepts', 0),
+            episodic_memory_size=db.count_episodic_events(user["id"]),
+            semantic_concepts=db.count_semantic_facts(user["id"]),
             perceptual_documents=summary.get('perceptual_documents', 0)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取记忆摘要失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/memory/clear")
-async def clear_working_memory():
+async def clear_working_memory(authorization: Optional[str] = Header(None)):
     """
     清空工作记忆
     
@@ -497,7 +1004,7 @@ async def clear_working_memory():
     try:
         if not agent:
             raise HTTPException(status_code=500, detail="Agent未初始化")
-        
+        _require_current_user(authorization)
         agent.clear_working_memory()
         logger.info("工作记忆已清空")
         
@@ -506,8 +1013,127 @@ async def clear_working_memory():
             "message": "工作记忆已清空",
             "timestamp": datetime.now()
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"清空工作记忆失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/dashboard")
+async def get_memory_dashboard(authorization: Optional[str] = Header(None)):
+    try:
+        user = _require_current_user(authorization)
+        return _build_memory_dashboard(user["id"])
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取记忆看板失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/memory/episodes")
+async def create_memory_episode(
+    payload: MemoryEpisodePayload,
+    authorization: Optional[str] = Header(None)
+):
+    try:
+        user = _require_current_user(authorization)
+        episode = _record_episode(user["id"], payload.dict())
+        return {"status": "success", "episode": episode}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"创建情景记忆失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/episodes")
+async def get_memory_episodes(
+    event_type: Optional[str] = None,
+    plan_id: Optional[int] = None,
+    limit: int = 20,
+    authorization: Optional[str] = Header(None)
+):
+    try:
+        user = _require_current_user(authorization)
+        episodes = db.list_episodic_events(user["id"], event_type=event_type, plan_id=plan_id, limit=limit)
+        return {"episodes": episodes, "total": len(episodes)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取情景记忆失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/semantic")
+async def get_memory_semantic(
+    category: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    try:
+        user = _require_current_user(authorization)
+        facts = db.list_semantic_facts(user["id"], fact_category=category)
+        return {"facts": facts, "total": len(facts)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取语义记忆失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/profile/init")
+async def initialize_profile(
+    payload: UserProfilePayload,
+    authorization: Optional[str] = Header(None)
+):
+    try:
+        user = _require_current_user(authorization)
+        profile = db.upsert_user_profile(user["id"], payload.dict())
+        episode = _record_episode(user["id"], {
+            "event_type": "questionnaire_submitted",
+            "event_summary": "用户提交了训练问卷并初始化画像",
+            "trigger_source": "profile_init",
+            "payload": payload.dict(),
+            "importance_score": 0.9,
+            "tags": ["profile", "questionnaire"]
+        })
+        _sync_profile_semantic_memory(user["id"], profile, source_event_id=episode["id"])
+        return {"status": "success", "profile": profile}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"初始化用户画像失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/profile/me")
+async def get_my_profile(authorization: Optional[str] = Header(None)):
+    try:
+        user = _require_current_user(authorization)
+        profile = db.get_user_profile(user["id"])
+        return profile or {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取用户画像失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/profile/me")
+async def update_my_profile(
+    payload: UserProfilePayload,
+    authorization: Optional[str] = Header(None)
+):
+    try:
+        user = _require_current_user(authorization)
+        profile = db.upsert_user_profile(user["id"], payload.dict())
+        _sync_profile_semantic_memory(user["id"], profile)
+        return {"status": "success", "profile": profile}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"更新用户画像失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -725,22 +1351,10 @@ async def get_coaches_info():
                 "icon": "🎯"
             },
             {
-                "name": "体能评估教练",
-                "role": "fitness_coach",
-                "description": "分析用户身体状态与疲劳程度，判断训练适宜性",
-                "icon": "💪"
-            },
-            {
                 "name": "运动康复教练",
                 "role": "recovery_coach",
                 "description": "针对运动损伤风险或已出现的伤痛提供预防措施与恢复建议",
                 "icon": "🏥"
-            },
-            {
-                "name": "安全督导教练",
-                "role": "safety_coach",
-                "description": "识别训练过程中的潜在风险因素，提高训练安全性",
-                "icon": "⚠️"
             }
         ]
         
@@ -899,42 +1513,103 @@ async def complete_profile(email: str):
 # ==================== 训练计划接口 ====================
 
 @app.post("/api/training/plans")
-async def create_training_plan(plan: TrainingPlan):
+async def create_training_plan(plan: TrainingPlan, authorization: Optional[str] = Header(None)):
     """创建训练计划"""
     try:
+        user = _require_current_user(authorization)
         plan_dict = plan.dict()
-        plan_dict["id"] = len(training_plans) + 1
-        plan_dict["created_at"] = datetime.now().isoformat()
-        training_plans.append(plan_dict)
-        
+
+        # 获取记忆上下文
+        memory_context = memory_service.get_user_memory_context(user["id"])
+
+        # 处理问卷画像
+        questionnaire_profile = _build_profile_from_questionnaire(plan_dict.get("metadata"), "training_plan")
+        if questionnaire_profile:
+            profile = db.upsert_user_profile(user["id"], questionnaire_profile)
+            _sync_profile_semantic_memory(user["id"], profile)
+
+        # 将记忆上下文快照添加到 metadata
+        existing_metadata = plan_dict.get("metadata") or {}
+        metadata = {
+            **existing_metadata,
+            "_memory_snapshot": {
+                "semantic_facts_count": len(memory_context.get("semantic_profile", {})),
+                "recent_episodes_count": len(memory_context.get("recent_episodes", [])),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+        plan_dict["metadata"] = metadata
+
+        # 标记计划基于记忆生成
+        plan_dict["based_on_memory"] = True
+        saved_plan = db.create_training_plan(user["id"], plan_dict)
+        episode = _record_episode(user["id"], {
+            "event_type": "plan_generated",
+            "plan_id": saved_plan["id"],
+            "event_summary": f"生成训练计划：{saved_plan['title']}",
+            "trigger_source": "training_plan_create",
+            "payload": {
+                "goal": saved_plan.get("goal"),
+                "selected_weekdays": saved_plan.get("selected_weekdays", []),
+                "metadata": saved_plan.get("metadata", {})
+            },
+            "importance_score": 0.9,
+            "tags": ["plan", "generated"]
+        })
+
+        if saved_plan.get("goal"):
+            db.upsert_semantic_fact(
+                user_id=user["id"],
+                fact_category="profile",
+                fact_key="latest_plan_goal",
+                fact_value=str(saved_plan["goal"]),
+                confidence=0.85,
+                source_event_id=episode["id"],
+                source_type="training_plan"
+            )
+
         logger.info(f"创建训练计划: {plan.title}")
+
+        # 触发记忆固化（如果需要）
+        consolidation_result = consolidation_service.trigger_consolidation_if_needed(user["id"])
+        if consolidation_result.get("status") != "skipped":
+            logger.info(f"记忆固化已触发: user_id={user['id']}, patterns={len(consolidation_result.get('patterns_found', []))}")
+
         return {
             "status": "success",
-            "plan": plan_dict
+            "plan": saved_plan,
+            "consolidation": consolidation_result if consolidation_result.get("status") != "skipped" else None
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"创建训练计划失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/training/plans")
-async def get_training_plans():
+async def get_training_plans(authorization: Optional[str] = Header(None)):
     """获取所有训练计划"""
     try:
+        user = _require_current_user(authorization)
+        plans = db.list_training_plans(user["id"])
         return {
-            "plans": training_plans,
-            "total": len(training_plans)
+            "plans": plans,
+            "total": len(plans)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取训练计划失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/training/plans/{plan_id}")
-async def get_training_plan(plan_id: int):
+async def get_training_plan(plan_id: int, authorization: Optional[str] = Header(None)):
     """获取单个训练计划"""
     try:
-        plan = next((p for p in training_plans if p["id"] == plan_id), None)
+        user = _require_current_user(authorization)
+        plan = db.get_training_plan_by_id(user["id"], plan_id)
         if not plan:
             raise HTTPException(status_code=404, detail="训练计划不存在")
         return plan
@@ -946,21 +1621,60 @@ async def get_training_plan(plan_id: int):
 
 
 @app.put("/api/training/plans/{plan_id}")
-async def update_training_plan(plan_id: int, payload: TrainingPlanUpdate):
+async def update_training_plan(
+    plan_id: int,
+    payload: TrainingPlanUpdate,
+    authorization: Optional[str] = Header(None)
+):
     """鏇存柊璁粌璁″垝"""
     try:
-        plan = next((p for p in training_plans if p["id"] == plan_id), None)
+        user = _require_current_user(authorization)
+        plan = db.get_training_plan_by_id(user["id"], plan_id)
         if not plan:
             raise HTTPException(status_code=404, detail="璁粌璁″垝涓嶅瓨鍦?")
 
         updates = payload.dict(exclude_unset=True)
-        plan.update(updates)
-        plan["updated_at"] = datetime.now().isoformat()
+        updated_plan = db.update_training_plan(user["id"], plan_id, updates)
+        if updated_plan is None:
+            raise HTTPException(status_code=404, detail="训练计划不存在")
+
+        tags = ["plan", "updated"]
+        event_summary = f"更新训练计划：{updated_plan['title']}"
+
+        # 处理训练日选择
+        if "selected_weekdays" in updates:
+            tags.append("weekday_selected")
+            selected_weekdays = updated_plan.get('selected_weekdays', [])
+            event_summary = f"更新训练计划训练日：{','.join(selected_weekdays)}"
+
+            # 记录情景事件并更新语义记忆
+            episode = _record_episode(user["id"], {
+                "event_type": "plan_updated",
+                "plan_id": plan_id,
+                "event_summary": event_summary,
+                "trigger_source": "training_plan_update",
+                "payload": updates,
+                "importance_score": 0.7,
+                "tags": tags
+            })
+
+            # 从训练日选择提炼语义记忆
+            _update_semantic_from_weekday_selection(user["id"], selected_weekdays, episode.get("id"))
+        else:
+            _record_episode(user["id"], {
+                "event_type": "plan_updated",
+                "plan_id": plan_id,
+                "event_summary": event_summary,
+                "trigger_source": "training_plan_update",
+                "payload": updates,
+                "importance_score": 0.7,
+                "tags": tags
+            })
 
         logger.info(f"鏇存柊璁粌璁″垝: {plan_id}")
         return {
             "status": "success",
-            "plan": plan
+            "plan": updated_plan
         }
     except HTTPException:
         raise
@@ -970,13 +1684,17 @@ async def update_training_plan(plan_id: int, payload: TrainingPlanUpdate):
 
 
 @app.delete("/api/training/plans/{plan_id}")
-async def delete_training_plan(plan_id: int):
+async def delete_training_plan(plan_id: int, authorization: Optional[str] = Header(None)):
     """删除训练计划"""
     try:
-        global training_plans
-        training_plans = [p for p in training_plans if p["id"] != plan_id]
+        user = _require_current_user(authorization)
+        deleted = db.delete_training_plan(user["id"], plan_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="训练计划不存在")
         logger.info(f"删除训练计划: {plan_id}")
         return {"status": "success", "message": "训练计划已删除"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"删除训练计划失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -985,24 +1703,47 @@ async def delete_training_plan(plan_id: int):
 # ==================== 训练记录接口 ====================
 
 @app.post("/api/training/records")
-async def create_training_record(record: TrainingRecord):
+async def create_training_record(record: TrainingRecord, authorization: Optional[str] = Header(None)):
     """创建训练记录"""
     try:
+        user = _require_current_user(authorization)
         record_dict = record.dict()
-        record_dict["id"] = len(training_records) + 1
-        record_dict["created_at"] = datetime.now().isoformat()
-        training_records.append(record_dict)
+        saved_record = db.create_training_record(user["id"], record_dict)
+
+        event_type = "training_completed"
+        if saved_record.get("completion_status") == "skipped":
+            event_type = "training_skipped"
+
+        episode = _record_episode(user["id"], {
+            "event_type": event_type,
+            "plan_id": saved_record.get("plan_id"),
+            "record_id": saved_record["id"],
+            "event_summary": f"{saved_record['date']} {saved_record['training_type']} 训练记录已保存",
+            "trigger_source": "training_record_create",
+            "payload": saved_record,
+            "importance_score": 0.8,
+            "tags": ["training", saved_record.get("completion_status", "completed")]
+        })
+        _update_semantic_from_training_record(user["id"], saved_record, source_event_id=episode["id"])
         
         logger.info(f"创建训练记录: {record.training_type} - {record.date}")
-        
+
         # 分析训练负荷并生成建议
-        suggestion = _analyze_training_load()
-        
+        suggestion = _analyze_training_load(user["id"])
+
+        # 触发记忆固化（如果需要）
+        consolidation_result = consolidation_service.trigger_consolidation_if_needed(user["id"])
+        if consolidation_result.get("status") != "skipped":
+            logger.info(f"记忆固化已触发: user_id={user['id']}, patterns={len(consolidation_result.get('patterns_found', []))}")
+
         return {
             "status": "success",
-            "record": record_dict,
-            "suggestion": suggestion
+            "record": saved_record,
+            "suggestion": suggestion,
+            "consolidation": consolidation_result if consolidation_result.get("status") != "skipped" else None
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"创建训练记录失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1012,36 +1753,30 @@ async def create_training_record(record: TrainingRecord):
 async def get_training_records(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    training_type: Optional[str] = None
+    training_type: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
 ):
     """获取训练记录（支持筛选）"""
     try:
-        filtered_records = training_records
-        
-        # 按日期筛选
-        if start_date:
-            filtered_records = [r for r in filtered_records if r["date"] >= start_date]
-        if end_date:
-            filtered_records = [r for r in filtered_records if r["date"] <= end_date]
-        
-        # 按训练类型筛选
-        if training_type:
-            filtered_records = [r for r in filtered_records if r["training_type"] == training_type]
-        
+        user = _require_current_user(authorization)
+        filtered_records = db.list_training_records(user["id"], start_date, end_date, training_type)
         return {
             "records": filtered_records,
             "total": len(filtered_records)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取训练记录失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/training/records/{record_id}")
-async def get_training_record(record_id: int):
+async def get_training_record(record_id: int, authorization: Optional[str] = Header(None)):
     """获取单个训练记录"""
     try:
-        record = next((r for r in training_records if r["id"] == record_id), None)
+        user = _require_current_user(authorization)
+        record = db.get_training_record_by_id(user["id"], record_id)
         if not record:
             raise HTTPException(status_code=404, detail="训练记录不存在")
         return record
@@ -1053,26 +1788,199 @@ async def get_training_record(record_id: int):
 
 
 @app.delete("/api/training/records/{record_id}")
-async def delete_training_record(record_id: int):
+async def delete_training_record(record_id: int, authorization: Optional[str] = Header(None)):
     """删除训练记录"""
     try:
-        global training_records
-        training_records = [r for r in training_records if r["id"] != record_id]
+        user = _require_current_user(authorization)
+        deleted = db.delete_training_record(user["id"], record_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="训练记录不存在")
         logger.info(f"删除训练记录: {record_id}")
         return {"status": "success", "message": "训练记录已删除"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"删除训练记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 饮食记录接口 ====================
+
+@app.post("/api/daily/records")
+async def create_daily_record(record: DailyRecord, authorization: Optional[str] = Header(None)):
+    """创建饮食记录"""
+    try:
+        user = _require_current_user(authorization)
+        record_dict = record.dict()
+        saved_record = db.create_daily_record(user["id"], record_dict)
+
+        # 记录到情景记忆
+        episode = _record_episode(user["id"], {
+            "event_type": "diet_recorded",
+            "record_id": saved_record["id"],
+            "event_summary": f"{saved_record['date']} {saved_record['meal_type']} 饮食记录已保存",
+            "trigger_source": "daily_record_create",
+            "payload": saved_record,
+            "importance_score": 0.6,
+            "tags": ["diet", saved_record["meal_type"]]
+        })
+
+        logger.info(f"创建饮食记录: {record.meal_type} - {record.date}")
+        return {"status": "success", "record": saved_record}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"创建饮食记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/daily/records")
+async def get_daily_records(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """获取饮食记录（支持筛选）"""
+    try:
+        user = _require_current_user(authorization)
+        filtered_records = db.list_daily_records(user["id"], start_date, end_date)
+        return {
+            "records": filtered_records,
+            "total": len(filtered_records)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取饮食记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/daily/records/{record_id}")
+async def get_daily_record(record_id: int, authorization: Optional[str] = Header(None)):
+    """获取单个饮食记录"""
+    try:
+        user = _require_current_user(authorization)
+        record = db.get_daily_record_by_id(user["id"], record_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="饮食记录不存在")
+        return record
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取饮食记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/daily/records/{record_id}")
+async def delete_daily_record(record_id: int, authorization: Optional[str] = Header(None)):
+    """删除饮食记录"""
+    try:
+        user = _require_current_user(authorization)
+        deleted = db.delete_daily_record(user["id"], record_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="饮食记录不存在")
+        logger.info(f"删除饮食记录: {record_id}")
+        return {"status": "success", "message": "饮食记录已删除"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除饮食记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 体重记录接口 ====================
+
+@app.post("/api/weight/records")
+async def create_weight_record(record: WeightRecord, authorization: Optional[str] = Header(None)):
+    """创建体重记录"""
+    try:
+        user = _require_current_user(authorization)
+        record_dict = record.dict()
+        saved_record = db.create_weight_record(user["id"], record_dict)
+
+        # 记录到情景记忆
+        episode = _record_episode(user["id"], {
+            "event_type": "weight_measured",
+            "record_id": saved_record["id"],
+            "event_summary": f"{saved_record['date']} 体重记录已保存: {saved_record['weight']}kg",
+            "trigger_source": "weight_record_create",
+            "payload": saved_record,
+            "importance_score": 0.7,
+            "tags": ["weight", "health_metric"]
+        })
+
+        logger.info(f"创建体重记录: {record.weight}kg - {record.date}")
+        return {"status": "success", "record": saved_record}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"创建体重记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/weight/records")
+async def get_weight_records(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """获取体重记录（支持筛选）"""
+    try:
+        user = _require_current_user(authorization)
+        filtered_records = db.list_weight_records(user["id"], start_date, end_date)
+        return {
+            "records": filtered_records,
+            "total": len(filtered_records)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取体重记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/weight/records/{record_id}")
+async def get_weight_record(record_id: int, authorization: Optional[str] = Header(None)):
+    """获取个体重记录"""
+    try:
+        user = _require_current_user(authorization)
+        record = db.get_weight_record_by_id(user["id"], record_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="体重记录不存在")
+        return record
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取体重记录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/weight/records/{record_id}")
+async def delete_weight_record(record_id: int, authorization: Optional[str] = Header(None)):
+    """删除体重记录"""
+    try:
+        user = _require_current_user(authorization)
+        deleted = db.delete_weight_record(user["id"], record_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="体重记录不存在")
+        logger.info(f"删除体重记录: {record_id}")
+        return {"status": "success", "message": "体重记录已删除"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除体重记录失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== 数据分析接口 ====================
 
 @app.get("/api/training/analytics/frequency")
-async def get_training_frequency(days: int = 30):
+async def get_training_frequency(days: int = 30, authorization: Optional[str] = Header(None)):
     """获取训练频率趋势"""
     try:
         from datetime import datetime, timedelta
         from collections import defaultdict
+        user = _require_current_user(authorization)
         
         # 计算日期范围
         end_date = datetime.now()
@@ -1080,7 +1988,7 @@ async def get_training_frequency(days: int = 30):
         
         # 统计每天的训练次数
         frequency_map = defaultdict(int)
-        for record in training_records:
+        for record in db.list_training_records(user["id"]):
             record_date = datetime.fromisoformat(record["date"])
             if start_date <= record_date <= end_date:
                 date_str = record_date.strftime("%Y-%m-%d")
@@ -1102,24 +2010,27 @@ async def get_training_frequency(days: int = 30):
             "total_trainings": sum(counts),
             "average_per_week": sum(counts) / (days / 7) if days > 0 else 0
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取训练频率失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/training/analytics/load")
-async def get_training_load(days: int = 30):
+async def get_training_load(days: int = 30, authorization: Optional[str] = Header(None)):
     """获取训练负荷变化"""
     try:
         from datetime import datetime, timedelta
         from collections import defaultdict
+        user = _require_current_user(authorization)
         
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
         # 计算每天的训练负荷（疲劳度 * 时长）
         load_map = defaultdict(float)
-        for record in training_records:
+        for record in db.list_training_records(user["id"]):
             record_date = datetime.fromisoformat(record["date"])
             if start_date <= record_date <= end_date:
                 date_str = record_date.strftime("%Y-%m-%d")
@@ -1143,16 +2054,19 @@ async def get_training_load(days: int = 30):
             "loads": loads,
             "average_load": round(sum(loads) / len(loads), 2) if loads else 0
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取训练负荷失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/training/analytics/summary")
-async def get_training_summary(period: str = "week"):
+async def get_training_summary(period: str = "week", authorization: Optional[str] = Header(None)):
     """获取训练总结（周/月）"""
     try:
         from datetime import datetime, timedelta
+        user = _require_current_user(authorization)
         
         end_date = datetime.now()
         if period == "week":
@@ -1164,7 +2078,7 @@ async def get_training_summary(period: str = "week"):
         
         # 筛选时间范围内的记录
         period_records = [
-            r for r in training_records
+            r for r in db.list_training_records(user["id"])
             if start_date <= datetime.fromisoformat(r["date"]) <= end_date
         ]
         
@@ -1188,12 +2102,14 @@ async def get_training_summary(period: str = "week"):
             "average_fatigue": round(avg_fatigue, 2),
             "training_types": type_counts
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取训练总结失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _analyze_training_load() -> str:
+def _analyze_training_load(user_id: int) -> str:
     """分析训练负荷并生成建议"""
     try:
         from datetime import datetime, timedelta
@@ -1201,7 +2117,7 @@ def _analyze_training_load() -> str:
         # 分析最近2周的训练负荷
         two_weeks_ago = datetime.now() - timedelta(days=14)
         recent_records = [
-            r for r in training_records
+            r for r in db.list_training_records(user_id)
             if datetime.fromisoformat(r["date"]) >= two_weeks_ago
         ]
         

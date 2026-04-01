@@ -36,7 +36,7 @@ api.interceptors.response.use(
 )
 
 export default {
-  async queryStream(question, onChunk, onComplete, onError) {
+  async queryStream(question, onChunk, onComplete, onError, options = {}) {
     try {
       const token = localStorage.getItem('token')
       const headers = {
@@ -49,7 +49,11 @@ export default {
       const response = await fetch('/api/query', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ question, use_multi_agent: false })
+        body: JSON.stringify({
+          question,
+          use_multi_agent: Boolean(options.useMultiAgent),
+          user_profile: options.userProfile || null
+        })
       })
 
       if (!response.ok) {
@@ -94,9 +98,9 @@ export default {
             const type = data.type || 'answer'
             if (data.done) {
               if (type === 'answer') answerCompleted = true
-              onComplete(type)
+              onComplete(type, data)
             } else {
-              onChunk(data.content || '', type)
+              onChunk(data.content || '', type, data)
             }
           } catch (_e) {
             continue
@@ -124,6 +128,32 @@ export default {
 
   getMemorySummary() {
     return api.get('/memory/summary')
+  },
+
+  getMemoryDashboard() {
+    return api.get('/memory/dashboard')
+  },
+
+  getSemanticMemory(category) {
+    return api.get('/memory/semantic', {
+      params: category ? { category } : {}
+    })
+  },
+
+  getMemoryEpisodes(params = {}) {
+    return api.get('/memory/episodes', { params })
+  },
+
+  initializeProfile(profile) {
+    return api.post('/profile/init', profile)
+  },
+
+  getMyProfile() {
+    return api.get('/profile/me')
+  },
+
+  updateMyProfile(profile) {
+    return api.put('/profile/me', profile)
   },
 
   getKnowledgeStats() {

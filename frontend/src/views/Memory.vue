@@ -173,8 +173,15 @@ const recentActivities = ref([
 
 const refreshMemory = async () => {
   try {
-    const summary = await api.getMemorySummary()
+    const [summary, dashboard] = await Promise.all([
+      api.getMemorySummary(),
+      api.getMemoryDashboard()
+    ])
     memorySummary.value = summary
+    recentActivities.value = (dashboard?.episodic_memory?.recent_events || []).map((event) => ({
+      text: event.event_summary || event.question || '最近有新的记忆活动',
+      time: event.event_time || event.created_at || ''
+    }))
   } catch (error) {
     console.error('Failed to refresh memory:', error)
   }

@@ -12,13 +12,10 @@
       </div>
 
       <div class="navbar-menu">
-        <!-- <router-link to="/" class="nav-item">首页</router-link> -->
         <router-link to="/chat" class="nav-item">AI教练</router-link>
         <router-link to="/training-plan" class="nav-item">训练计划</router-link>
-        <!-- <router-link to="/training-record" class="nav-item">训练记录</router-link> -->
-        <!-- <router-link to="/analytics" class="nav-item">数据分析</router-link> -->
-        <!-- <router-link to="/knowledge" class="nav-item" v-if="isAdmin">知识库</router-link> -->
-        <!-- <router-link to="/memory" class="nav-item">记忆</router-link> -->
+        <router-link v-if="isAdmin" to="/knowledge" class="nav-item">知识库管理</router-link>
+        <router-link v-if="isAdmin" to="/memory" class="nav-item">记忆管理</router-link>
       </div>
 
       <div class="navbar-actions">

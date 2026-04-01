@@ -40,7 +40,7 @@ content = '''<template>
               Delete
             </button>
           </article>
-          <p v-if="!chatHistory.length" class="empty-copy">No chat history yet.</p>
+          <p v-if="!chatHistory.length" class="empty-copy">还没有历史对话</p>
         </div>
       </aside>
 

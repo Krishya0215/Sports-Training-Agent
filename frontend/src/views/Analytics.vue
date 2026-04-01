@@ -134,15 +134,15 @@ export default {
 
         // 加载统计摘要
         const summaryRes = await api.get(`/training/analytics/summary?period=${selectedPeriod.value}`)
-        summary.value = summaryRes.data
+        summary.value = summaryRes
 
         // 加载频率数据
         const frequencyRes = await api.get(`/training/analytics/frequency?days=${days}`)
-        frequencyData.value = frequencyRes.data
+        frequencyData.value = frequencyRes
 
         // 加载负荷数据
         const loadRes = await api.get(`/training/analytics/load?days=${days}`)
-        loadData_ref.value = loadRes.data
+        loadData_ref.value = loadRes
 
         // 更新图表
         await nextTick()

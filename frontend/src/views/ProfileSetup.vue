@@ -138,8 +138,8 @@ const handleSubmit = async () => {
     // 暂时只标记为已完成
     await authStore.completeProfile()
     
-    // 跳转到首页
-    router.push('/')
+    // 跳转到AI教练页
+    router.push('/chat')
   } catch (error) {
     errorMessage.value = '保存失败，请稍后重试'
   } finally {
@@ -150,7 +150,7 @@ const handleSubmit = async () => {
 const handleSkip = async () => {
   // 标记为已完成（即使跳过）
   await authStore.completeProfile()
-  router.push('/')
+  router.push('/chat')
 }
 </script>
 

@@ -81,10 +81,20 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('退出登录失败:', error)
     } finally {
       // 清除状态
+      const userInfo = user.value
+      const userId = userInfo?.id
+
       token.value = ''
       user.value = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+
+      // 清除该用户的聊天历史
+      if (userId) {
+        localStorage.removeItem(`sports-training-chat-history-${userId}`)
+        localStorage.removeItem(`sports-training-active-plan-id-${userId}`)
+        localStorage.removeItem(`sports-training-use-multi-agent-${userId}`)
+      }
     }
   }
   

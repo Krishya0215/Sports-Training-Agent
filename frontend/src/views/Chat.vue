@@ -6,7 +6,7 @@
       <aside class="sidebar card">
         <div class="sidebar-head">
           <div>
-            <p class="sidebar-eyebrow">AI Coach</p>
+            <!-- <p class="sidebar-eyebrow">AI Coach</p> -->
             <h2>最近对话</h2>
           </div>
           <div class="sidebar-actions">
@@ -35,14 +35,13 @@
               Delete
             </button>
           </article>
-          <p v-if="!chatHistory.length" class="empty-copy">No chat history yet.</p>
+          <p v-if="!chatHistory.length" class="empty-copy">还没有历史对话</p>
         </div>
       </aside>
 
       <section class="main card">
         <header class="main-head">
           <div>
-            <p class="main-eyebrow">AI 教练</p>
             <h1>{{ currentChat !== null ? `对话 #${currentChat + 1}` : '开始新对话' }}</h1>
           </div>
           <!-- <button v-if="messages.length" type="button" class="btn btn-secondary" @click="newChat">
@@ -53,8 +52,8 @@
         <div ref="messagesContainer" class="messages">
           <div v-if="!messages.length" class="empty-state">
             <div class="empty-badge">AI</div>
-            <h3>Start chatting with the AI coach</h3>
-            <p>Ask about training goals, recovery, or planning and the AI coach will help.</p>
+            <h3>开始和 AI 教练对话吧！</h3>
+            <p>询问有关训练计划、运动恢复方面的问题，AI教练会提供帮助。</p>
             <div class="quick-suggestions">
               <button
                 v-for="suggestion in suggestions"
@@ -77,27 +76,106 @@
             >
               <div class="avatar">{{ message.role === 'user' ? '我' : 'AI' }}</div>
               <div class="message-card">
-                <!-- 显示思考过程（仅AI消息） -->
-                <div v-if="message.role === 'assistant' && message.thinking" class="thinking-container">
+                <div
+                  v-if="message.role === 'assistant' && (message.thinking || message.progressLogs?.length)"
+                  class="thinking-container"
+                >
                   <button 
                     type="button" 
                     class="thinking-toggle"
                     @click="message.isThinkingExpanded = !message.isThinkingExpanded"
                   >
                     <span class="thinking-icon">{{ message.isThinkingExpanded ? '▼' : '▶' }}</span>
-                    <span class="thinking-label">🧠 教练的思考过程</span>
+                    <span class="thinking-label">🧠 生成过程</span>
                   </button>
                   <div v-if="message.isThinkingExpanded" class="thinking-content">
-                    <p v-for="(line, lineIndex) in message.thinking.split('\n')" 
-                       :key="lineIndex"
-                       class="thinking-line">
-                      {{ line }}
-                    </p>
+                    <div v-if="message.progressLogs?.length" class="progress-block">
+                      <div class="progress-head">
+                        <p class="progress-tag">生成进度</p>
+                        <span class="progress-count">{{ message.progressLogs.length }} 个步骤</span>
+                      </div>
+                      <div class="progress-list">
+                        <p
+                          v-for="(log, logIndex) in message.progressLogs"
+                          :key="`${log}-${logIndex}`"
+                          class="progress-item"
+                        >
+                          {{ log }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- <div v-if="message.thinking" class="thinking-block">
+                      <p class="progress-tag">教练思路</p>
+                      <p v-for="(line, lineIndex) in message.thinking.split('\n')" 
+                         :key="lineIndex"
+                         class="thinking-line">
+                        {{ line }}
+                      </p>
+                    </div> -->
+                  </div>
+                </div>
+
+                <div
+                  v-if="message.role === 'assistant' && message.scheduler"
+                  class="scheduler-card"
+                >
+                  <div class="scheduler-head">
+                    <div>
+                      <p class="scheduler-tag">协作分析</p>
+                      <h4>{{ getSchedulerHeadline(message.scheduler.coaches.length) }}</h4>
+                    </div>
+                    <button
+                      type="button"
+                      class="scheduler-toggle"
+                      @click="message.isSchedulerExpanded = !message.isSchedulerExpanded"
+                    >
+                      {{ message.isSchedulerExpanded ? '收起' : '展开' }}
+                    </button>
+                  </div>
+
+                  <p v-if="message.scheduler.reasonText" class="scheduler-copy">
+                    {{ message.scheduler.reasonText }}
+                  </p>
+
+                  <div class="scheduler-chip-row">
+                    <span
+                      v-for="coach in message.scheduler.coaches"
+                      :key="coach.role"
+                      class="scheduler-chip"
+                    >
+                      {{ coach.icon }} {{ coach.name }}
+                    </span>
+                  </div>
+
+                  <div v-if="message.isSchedulerExpanded" class="scheduler-details">
+                    <div class="scheduler-detail-block">
+                      <h5>本次关注重点</h5>
+                      <ul>
+                        <li v-for="signal in message.scheduler.signals" :key="signal">{{ formatSchedulerSignal(signal) }}</li>
+                      </ul>
+                    </div>
+
+                    <div class="scheduler-detail-block">
+                      <h5>协作方式</h5>
+                      <div class="scheduler-batches">
+                        <span
+                          v-for="(batch, batchIndex) in message.scheduler.executionPlan"
+                          :key="`${batch.join('-')}-${batchIndex}`"
+                          class="scheduler-batch"
+                        >
+                          {{ formatExecutionBatch(batch, batchIndex) }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <!-- 显示正常回复 -->
-                <div v-if="message.content" class="message-text markdown-message" v-html="renderMarkdown(message.content)"></div>
+                <template v-if="message.content && !message.planCard">
+                  <p v-if="message.role === 'user'" class="message-text user-message-text">{{ message.content }}</p>
+                  <div v-else class="message-text markdown-message" v-html="renderMarkdown(message.content)"></div>
+                </template>
                 <p v-else-if="message.role === 'assistant' && loading" class="message-text loading">
                   <span class="loading-dots">●●●</span>
                 </p>
@@ -107,43 +185,8 @@
                     <div>
                       <p class="plan-tag">AI 生成计划</p>
                       <h3>{{ message.planCard.title }}</h3>
-                      <p class="plan-subtitle">{{ message.planCard.subtitle }}</p>
-                    </div>
-                    <div class="plan-head-right">
-                      <span class="plan-badge">1 个月</span>
-                      <div class="plan-meta-icons">
-                        <div class="meta-icon-item">
-                          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                          </svg>
-                          <span>{{ message.planCard.weeklyDays }}天/周</span>
-                        </div>
-                        <div class="meta-icon-item">
-                          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                          </svg>
-                          <span>{{ message.planCard.duration }}分钟</span>
-                        </div>
-                        <div class="meta-icon-item">
-                          <svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                          </svg>
-                          <span>{{ message.planCard.intensity }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="plan-summary-card">
-                    <h4 class="summary-title">
-                      <svg class="summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                      </svg>
-                      计划概述
-                    </h4>
-                    <div class="summary-content">
-                      <pre class="summary-text">{{ message.planCard.summary }}</pre>
-                    </div>
+                      <!-- <p class="plan-subtitle">{{ message.planCard.subtitle }}</p> -->
+                    </div>                  
                   </div>
 
                   <div class="plan-sections">
@@ -190,7 +233,6 @@
                       </svg>
                       查看详情
                     </button>
-                    <div class="action-hint">点击查看完整训练计划和日历安排</div>
                   </div>
                 </div>
 
@@ -201,10 +243,34 @@
         </div>
 
         <div class="quick-actions">
-          <button type="button" class="quick-btn" @click="quickAction('我想生成一份运动训练计划')">生成计划</button>
-          <button type="button" class="quick-btn" @click="quickAction('我今天适合练什么？')">今日训练</button>
-          <button type="button" class="quick-btn" @click="quickAction('帮我安排恢复建议')">恢复建议</button>
-          <button type="button" class="quick-btn" @click="quickAction('帮我分析训练进度')">进度分析</button>
+          <button type="button" class="quick-btn" @click="quickAction('我想生成一份运动训练计划')">
+            <span class="quick-icon">📋</span>
+            生成计划
+          </button>
+          <button type="button" class="quick-btn" @click="openTrainingRecordModal()">
+            <span class="quick-icon">📝</span>
+            记录训练
+          </button>
+          <button type="button" class="quick-btn" @click="openDietRecordModal()">
+            <span class="quick-icon">🍎</span>
+            记录饮食
+          </button>
+          <button type="button" class="quick-btn" @click="openWeightRecordModal()">
+            <span class="quick-icon">⚖️</span>
+            记录体重
+          </button>
+          
+        </div>
+
+        <div class="response-mode-card">
+          <label class="response-mode-toggle">
+            <input v-model="enableMultiAgent" type="checkbox">
+            <span class="response-mode-slider"></span>
+            <span class="response-mode-copy">
+              <strong>使用多智能体协作回答</strong>
+              <small>回答更全面，但通常会更耗时。</small>
+            </span>
+          </label>
         </div>
 
         <footer class="input-bar">
@@ -229,24 +295,25 @@
           <div class="plan-modal-head">
             <div>
               <p class="plan-tag">AI 生成计划</p>
-              <h2>{{ previewPlan.title }}</h2>
-              <p class="modal-copy">{{ previewPlan.goal || 'AI generated training plan' }}</p>
+              <!-- <h2>{{ previewPlan.title }}</h2> -->
+              <!-- <p class="modal-copy">{{ previewPlan.goal || 'AI generated training plan' }}</p> -->
             </div>
             <div class="plan-meta">
-              <span>{{ previewPlan.metadata?.weekly_days || 'TBD' }}</span>
-              <span>{{ previewPlan.metadata?.daily_duration || 'TBD' }}</span>
+              <span>{{ previewPlan.metadata?.weekly_days || 'TBD' }}天/周</span>
+              <span>{{ previewPlan.metadata?.daily_duration || 'TBD' }}分钟/次</span>
               <span>{{ previewPlan.metadata?.intensity || 'TBD' }}</span>
             </div>
           </div>
 
           <section class="modal-section">
-            <h3>计划详情</h3>
-            <div class="markdown-message preview-markdown" v-html="renderMarkdown(previewPlan.content)"></div>
+            <!-- <h3>计划详情</h3> -->
+            <div class="markdown-content preview-markdown" v-html="renderPlanContent(previewPlan.content)"></div>
           </section>
 
           <section class="modal-section">
             <h3>Select training days</h3>
             <p class="modal-copy">Choose the weekdays you want to train on for this plan.</p>
+            <p class="modal-copy">You can select up to {{ getPreviewWeekdayLimit() }} training days.</p>
             <div class="weekday-grid">
               <button
                 v-for="day in weekdayOptions"
@@ -254,6 +321,7 @@
                 type="button"
                 class="weekday-chip"
                 :class="{ active: previewWeekdays.includes(day) }"
+                :disabled="isPreviewWeekdayDisabled(day)"
                 @click="togglePreviewWeekday(day)"
               >
                 {{ day }}
@@ -282,7 +350,7 @@
         
         <div class="questionnaire-header-modal">
           <div>
-            <p class="coach-tag">AI 教练 · 卡卡</p>
+            <p class="coach-tag">AI 教练</p>
             <h2>{{ currentQuestionnaireQuestion.title }}</h2>
             <p class="modal-copy">{{ currentQuestionnaireQuestion.subtitle }}</p>
           </div>
@@ -335,6 +403,307 @@
         </div>
       </div>
     </div>
+
+    <div v-if="showTrainingRecordModal" class="modal-mask" @click.self="closeTrainingRecordModal">
+      <div class="modal-card plan-modal record-modal">
+        <button type="button" class="modal-close" @click="closeTrainingRecordModal">✕</button>
+
+        <div class="record-modal-head">
+          <div>
+            <p class="coach-tag">训练记录</p>
+            <h2>记录今天的训练表现</h2>
+            <p class="modal-copy">填写训练类型、时长和身体反馈，方便后续分析训练节奏与恢复状态。</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="submitTrainingRecord">
+          <section class="modal-section">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="training-type">训练类型</label>
+                <select id="training-type" v-model="trainingRecordData.training_type" class="form-input">
+                  <option value="">请选择</option>
+                  <option value="力量训练">力量训练</option>
+                  <option value="有氧训练">有氧训练</option>
+                  <option value="跑步">跑步</option>
+                  <option value="HIIT">HIIT</option>
+                  <option value="瑜伽拉伸">瑜伽拉伸</option>
+                  <option value="球类运动">球类运动</option>
+                  <option value="其他">其他</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="training-duration">训练时长</label>
+                <input
+                  id="training-duration"
+                  v-model.number="trainingRecordData.duration"
+                  class="form-input"
+                  type="number"
+                  min="1"
+                  max="600"
+                  placeholder="分钟"
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="training-intensity">训练强度</label>
+              <select id="training-intensity" v-model="trainingRecordData.intensity" class="form-input">
+                <option value="">请选择</option>
+                <option value="低">低</option>
+                <option value="中">中</option>
+                <option value="高">高</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">疲劳程度</label>
+              <div class="range-selector">
+                <button
+                  v-for="level in [1, 2, 3, 4, 5]"
+                  :key="`fatigue-${level}`"
+                  type="button"
+                  class="fatigue-option"
+                  :class="{ selected: trainingRecordData.fatigue_level === level }"
+                  @click="trainingRecordData.fatigue_level = level"
+                >
+                  {{ level }}
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">疼痛程度</label>
+              <div class="range-selector">
+                <button
+                  v-for="level in [0, 1, 2, 3, 4, 5]"
+                  :key="`pain-${level}`"
+                  type="button"
+                  class="pain-option"
+                  :class="{ selected: trainingRecordData.pain_level === level }"
+                  @click="trainingRecordData.pain_level = level"
+                >
+                  {{ level }}
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="training-notes">备注</label>
+              <textarea
+                id="training-notes"
+                v-model.trim="trainingRecordData.notes"
+                class="form-textarea"
+                rows="4"
+                placeholder="例如：今天状态不错，下肢发力感明显，右膝有轻微不适"
+              />
+            </div>
+          </section>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" @click="closeTrainingRecordModal">取消</button>
+            <button type="submit" class="btn btn-primary" :disabled="savingTrainingRecord">
+              {{ savingTrainingRecord ? '保存中...' : '保存训练记录' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div v-if="showDietRecordModal" class="modal-mask" @click.self="closeDietRecordModal">
+      <div class="modal-card plan-modal record-modal">
+        <button type="button" class="modal-close" @click="closeDietRecordModal">✕</button>
+
+        <div class="record-modal-head">
+          <div>
+            <p class="coach-tag">饮食记录</p>
+            <h2>记录今天吃了什么</h2>
+            <p class="modal-copy">记录餐别、食物和大致营养信息，后续更容易结合训练安排做饮食建议。</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="submitDietRecord">
+          <section class="modal-section">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="meal-type">餐别</label>
+                <select id="meal-type" v-model="dietRecordData.meal_type" class="form-input">
+                  <option value="">请选择</option>
+                  <option value="早餐">早餐</option>
+                  <option value="午餐">午餐</option>
+                  <option value="晚餐">晚餐</option>
+                  <option value="加餐">加餐</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="diet-calories">热量</label>
+                <input
+                  id="diet-calories"
+                  v-model.number="dietRecordData.calories"
+                  class="form-input"
+                  type="number"
+                  min="0"
+                  placeholder="kcal"
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="food-content">食物内容</label>
+              <textarea
+                id="food-content"
+                v-model.trim="dietRecordData.food_content"
+                class="form-textarea"
+                rows="4"
+                placeholder="例如：鸡胸肉沙拉、米饭半碗、无糖酸奶"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="diet-protein">蛋白质</label>
+              <input
+                id="diet-protein"
+                v-model.number="dietRecordData.protein"
+                class="form-input"
+                type="number"
+                min="0"
+                step="0.1"
+                placeholder="克"
+              >
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="diet-notes">备注</label>
+              <textarea
+                id="diet-notes"
+                v-model.trim="dietRecordData.notes"
+                class="form-textarea"
+                rows="3"
+                placeholder="例如：训练后 30 分钟内进食，今天饮水偏少"
+              />
+            </div>
+          </section>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" @click="closeDietRecordModal">取消</button>
+            <button type="submit" class="btn btn-primary" :disabled="savingDietRecord">
+              {{ savingDietRecord ? '保存中...' : '保存饮食记录' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div v-if="showWeightRecordModal" class="modal-mask" @click.self="closeWeightRecordModal">
+      <div class="modal-card plan-modal record-modal">
+        <button type="button" class="modal-close" @click="closeWeightRecordModal">✕</button>
+
+        <div class="record-modal-head">
+          <div>
+            <p class="coach-tag">体重记录</p>
+            <h2>记录体重与围度变化</h2>
+            <p class="modal-copy">把体重、体脂和围度记下来，后面更容易判断减脂、增肌或维持阶段的趋势。</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="submitWeightRecord">
+          <section class="modal-section">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="weight-value">体重</label>
+                <input
+                  id="weight-value"
+                  v-model.number="weightRecordData.weight"
+                  class="form-input weight-input"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="kg"
+                >
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="body-fat-value">体脂率</label>
+                <input
+                  id="body-fat-value"
+                  v-model.number="weightRecordData.body_fat"
+                  class="form-input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  placeholder="%"
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">围度信息</label>
+              <div class="measure-inputs">
+                <div>
+                  <label for="chest-circumference">胸围</label>
+                  <input
+                    id="chest-circumference"
+                    v-model.number="weightRecordData.chest_circumference"
+                    class="form-input"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="cm"
+                  >
+                </div>
+
+                <div>
+                  <label for="waist-circumference">腰围</label>
+                  <input
+                    id="waist-circumference"
+                    v-model.number="weightRecordData.waist_circumference"
+                    class="form-input"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="cm"
+                  >
+                </div>
+
+                <div>
+                  <label for="hip-circumference">臀围</label>
+                  <input
+                    id="hip-circumference"
+                    v-model.number="weightRecordData.hip_circumference"
+                    class="form-input"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="cm"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="weight-notes">备注</label>
+              <textarea
+                id="weight-notes"
+                v-model.trim="weightRecordData.notes"
+                class="form-textarea"
+                rows="3"
+                placeholder="例如：晨起空腹测量，昨晚睡眠一般"
+              />
+            </div>
+          </section>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" @click="closeWeightRecordModal">取消</button>
+            <button type="submit" class="btn btn-primary" :disabled="savingWeightRecord">
+              {{ savingWeightRecord ? '保存中...' : '保存体重记录' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -350,6 +719,28 @@ const route = useRoute()
 const CHAT_HISTORY_STORAGE_KEY = 'sports-training-chat-history'
 const ACTIVE_PLAN_KEY = 'sports-training-active-plan-id'
 const PENDING_PROMPT_KEY = 'pendingTrainingPrompt'
+const MULTI_AGENT_MODE_KEY = 'sports-training-use-multi-agent'
+
+// 获取当前用户的聊天历史存储 key
+const getUserChatHistoryKey = () => {
+  const userInfo = JSON.parse(localStorage.getItem('user') || 'null')
+  const userId = userInfo?.id || 'anonymous'
+  return `${CHAT_HISTORY_STORAGE_KEY}-${userId}`
+}
+
+// 获取用户的 active plan 存储 key
+const getUserActivePlanKey = () => {
+  const userInfo = JSON.parse(localStorage.getItem('user') || 'null')
+  const userId = userInfo?.id || 'anonymous'
+  return `${ACTIVE_PLAN_KEY}-${userId}`
+}
+
+// 获取用户的多智能体模式存储 key
+const getUserMultiAgentModeKey = () => {
+  const userInfo = JSON.parse(localStorage.getItem('user') || 'null')
+  const userId = userInfo?.id || 'anonymous'
+  return `${MULTI_AGENT_MODE_KEY}-${userId}`
+}
 
 const suggestions = [
   '我想生成一份运动训练计划',
@@ -368,6 +759,7 @@ const loading = ref(false)
 const messagesContainer = ref(null)
 const inputRef = ref(null)
 const pendingPlanContext = ref(null)
+const enableMultiAgent = ref(true)
 
 const showPlanPreviewModal = ref(false)
 const previewPlan = ref(null)
@@ -384,6 +776,43 @@ const questionnaireData = ref({
   intensity: '',
   injury: '',
   injury_detail: ''
+})
+
+// 记录模态框相关状态
+const showTrainingRecordModal = ref(false)
+const showDietRecordModal = ref(false)
+const showWeightRecordModal = ref(false)
+const savingTrainingRecord = ref(false)
+const savingDietRecord = ref(false)
+const savingWeightRecord = ref(false)
+
+// 训练记录表单数据
+const trainingRecordData = ref({
+  training_type: '',
+  duration: 30,
+  intensity: '',
+  fatigue_level: 3,
+  pain_level: 0,
+  notes: ''
+})
+
+// 饮食记录表单数据
+const dietRecordData = ref({
+  meal_type: '',
+  food_content: '',
+  calories: '',
+  protein: '',
+  notes: ''
+})
+
+// 体重记录表单数据
+const weightRecordData = ref({
+  weight: '',
+  body_fat: '',
+  chest_circumference: '',
+  waist_circumference: '',
+  hip_circumference: '',
+  notes: ''
 })
 
 const questionnaireQuestions = [
@@ -640,6 +1069,13 @@ const renderMarkdown = (content = '') => {
       continue
     }
 
+    if (/^([-*_])\1{2,}$/.test(line)) {
+      closeList()
+      closeParagraph()
+      html.push('<hr class="md-divider">')
+      continue
+    }
+
     if (/^[-*]\s+/.test(line)) {
       closeParagraph()
       if (!inList) {
@@ -667,15 +1103,179 @@ const renderMarkdown = (content = '') => {
   return html.join('')
 }
 
+const levelAwareIsTrainingDayHeading = (text = '') =>
+  /^训练日\s*[一二三四五六七1234567890]+$/i.test(String(text || '').trim())
+
+const renderPlanContent = (content = '') => {
+  const lines = String(content || '').replace(/\r\n/g, '\n').split('\n')
+  const html = []
+  let inList = false
+  let inOrderedList = false
+  let inParagraph = false
+  let inBlockquote = false
+  let inTable = false
+  let tableHeaderParsed = false
+  let inTrainingDayCard = false
+
+  const closeList = () => {
+    if (inList) { html.push('</ul>'); inList = false }
+    if (inOrderedList) { html.push('</ol>'); inOrderedList = false }
+  }
+  const closeParagraph = () => { if (inParagraph) { html.push('</p>'); inParagraph = false } }
+  const closeBlockquote = () => { if (inBlockquote) { closeParagraph(); html.push('</blockquote>'); inBlockquote = false } }
+  const closeTable = () => { if (inTable) { html.push('</tbody></table>'); inTable = false; tableHeaderParsed = false } }
+  const closeTrainingDayCard = () => {
+    if (inTrainingDayCard) { closeTable(); closeBlockquote(); closeList(); closeParagraph(); html.push('</section>'); inTrainingDayCard = false }
+  }
+
+  const parseTableCells = (v = '') => v.split('|').map(c => c.trim()).filter(Boolean)
+  const appendTableRow = (cells = [], tag = 'td') => {
+    html.push('<tr>')
+    cells.forEach(c => html.push(`<${tag}>${formatInlineMarkdown(c)}</${tag}>`))
+    html.push('</tr>')
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+
+    if (!line) { closeTrainingDayCard(); closeTable(); closeBlockquote(); closeList(); closeParagraph(); continue }
+
+    const tableCells = parseTableCells(line)
+    const isTableSeparator = /^[\s|:-]+$/.test(line)
+    if ((line.includes('|') && tableCells.length >= 2) || (inTable && isTableSeparator)) {
+      closeBlockquote(); closeList(); closeParagraph()
+      if (!inTable && !isTableSeparator) {
+        html.push('<table class="md-table"><thead>'); appendTableRow(tableCells, 'th'); html.push('</thead><tbody>')
+        inTable = true; tableHeaderParsed = true; continue
+      }
+      if (inTable && isTableSeparator) continue
+      if (inTable && tableHeaderParsed) { appendTableRow(tableCells, 'td'); continue }
+    } else { closeTable() }
+
+    const headingMatch = line.match(/^(#{1,4})\s+(.+)$/)
+    if (headingMatch) {
+      const headingText = headingMatch[2].trim()
+      if (levelAwareIsTrainingDayHeading(headingText)) {
+        closeTrainingDayCard(); closeBlockquote(); closeList(); closeParagraph()
+        html.push('<section class="training-day-card">'); inTrainingDayCard = true
+        const level = Math.min(4, headingMatch[1].length)
+        html.push(`<h${level}>${formatInlineMarkdown(headingText)}</h${level}>`); continue
+      }
+      closeTrainingDayCard(); closeBlockquote(); closeList(); closeParagraph()
+      const level = Math.min(4, headingMatch[1].length)
+      html.push(`<h${level}>${formatInlineMarkdown(headingText)}</h${level}>`); continue
+    }
+
+    if (/^([-*_])\1{2,}$/.test(line)) {
+      closeTrainingDayCard(); closeBlockquote(); closeList(); closeParagraph()
+      html.push('<hr class="md-divider">'); continue
+    }
+
+    if (/^计划标题[:：]/.test(line)) {
+      closeTrainingDayCard(); closeBlockquote(); closeList(); closeParagraph()
+      html.push(`<h1>${formatInlineMarkdown(line.replace(/^计划标题[:：]\s*/, ''))}</h1>`); continue
+    }
+
+    if (/^计划概述[:：]/.test(line)) {
+      closeTrainingDayCard(); closeBlockquote(); closeList(); closeParagraph()
+      html.push(`<h2>计划概述</h2><p>${formatInlineMarkdown(line.replace(/^计划概述[:：]\s*/, ''))}</p>`); continue
+    }
+
+    if (/^>\s?/.test(line)) {
+      closeList()
+      if (!inBlockquote) { closeParagraph(); html.push('<blockquote>'); inBlockquote = true }
+      if (!inParagraph) { html.push('<p>'); inParagraph = true } else { html.push('<br>') }
+      html.push(formatInlineMarkdown(line.replace(/^>\s?/, ''))); continue
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      closeBlockquote(); closeParagraph()
+      if (!inList) { if (inOrderedList) { html.push('</ol>'); inOrderedList = false }; html.push('<ul>'); inList = true }
+      html.push(`<li>${formatInlineMarkdown(line.replace(/^[-*]\s+/, ''))}</li>`); continue
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      closeBlockquote(); closeParagraph()
+      if (!inOrderedList) { if (inList) { html.push('</ul>'); inList = false }; html.push('<ol>'); inOrderedList = true }
+      html.push(`<li>${formatInlineMarkdown(line.replace(/^\d+\.\s+/, ''))}</li>`); continue
+    }
+
+    if (!inParagraph) { closeList(); html.push('<p>'); inParagraph = true } else { html.push('<br>') }
+    html.push(formatInlineMarkdown(line))
+  }
+
+  closeTrainingDayCard(); closeTable(); closeBlockquote(); closeList(); closeParagraph()
+  return html.join('')
+}
+
 const normalizeMessage = (message = {}) => ({
   role: message.role || 'assistant',
   content: message.content || '',
   thinking: removeMarkdownFormat(message.thinking || ''), // 清理思考过程（总是AI生成）
   isThinkingExpanded: message.isThinkingExpanded !== undefined ? message.isThinkingExpanded : false, // 思考过程是否展开
+  progressLogs: Array.isArray(message.progressLogs) ? message.progressLogs : [],
+  scheduler: message.scheduler || null,
+  isSchedulerExpanded: message.isSchedulerExpanded !== undefined ? message.isSchedulerExpanded : true,
   timestamp: message.timestamp ? new Date(message.timestamp) : new Date(),
   planCard: message.planCard || null,
   planQuestionnaire: Boolean(message.planQuestionnaire)
 })
+
+const isPlanLikeAssistantMessage = (message = {}) => {
+  if (message.role !== 'assistant') return false
+  const content = String(message.content || '')
+  return Boolean(
+    message.planCard ||
+    isTrainingPlanContent(content) ||
+    /(^|\n)##\s*第\d+周/.test(content) ||
+    /(^|\n)###\s*训练日\d+/.test(content)
+  )
+}
+
+const sanitizeConversation = (conversation = [], fallbackQuestion = '', fallbackAnswer = '', fallbackTimestamp = null) => {
+  const normalizedConversation = (Array.isArray(conversation) ? conversation : [])
+    .map((message) => normalizeMessage(message))
+
+  let sanitized = [...normalizedConversation]
+
+  if (!sanitized.some((message) => message.role === 'user') && fallbackQuestion) {
+    sanitized.unshift(
+      normalizeMessage({
+        role: 'user',
+        content: fallbackQuestion,
+        timestamp: fallbackTimestamp
+      })
+    )
+  }
+
+  sanitized = sanitized.filter((message, index, list) => {
+    if (message.role !== 'assistant' || message.planCard || !isPlanLikeAssistantMessage(message)) {
+      return true
+    }
+
+    for (let nextIndex = index + 1; nextIndex < list.length; nextIndex += 1) {
+      const nextMessage = list[nextIndex]
+      if (nextMessage.role === 'user') break
+      if (nextMessage.role === 'assistant' && nextMessage.planCard) {
+        return false
+      }
+    }
+
+    return true
+  })
+
+  if (!sanitized.some((message) => message.role === 'assistant') && fallbackAnswer) {
+    sanitized.push(
+      normalizeMessage({
+        role: 'assistant',
+        content: fallbackAnswer,
+        timestamp: fallbackTimestamp
+      })
+    )
+  }
+
+  return sanitized
+}
 
 const normalizeChatHistory = (history = []) =>
   history.map((item) => {
@@ -683,22 +1283,27 @@ const normalizeChatHistory = (history = []) =>
     let conversation = []
     
     if (Array.isArray(item.conversation)) {
-      conversation = item.conversation.map(normalizeMessage)
+      conversation = sanitizeConversation(item.conversation, item.question, item.answer, item.timestamp)
     } else if (item.question && item.answer) {
       // 如果没有conversation但有question和answer，自动从中构造对话
-      conversation = [
-        normalizeMessage({ 
-          role: 'user', 
-          content: item.question, 
-          timestamp: item.timestamp 
-        }),
-        normalizeMessage({ 
-          role: 'assistant', 
-          content: item.answer,
-          thinking: item.thinking || '', // 添加thinking
-          timestamp: item.timestamp 
-        })
-      ]
+      conversation = sanitizeConversation(
+        [
+          {
+            role: 'user',
+            content: item.question,
+            timestamp: item.timestamp
+          },
+          {
+            role: 'assistant',
+            content: item.answer,
+            thinking: item.thinking || '',
+            timestamp: item.timestamp
+          }
+        ],
+        item.question,
+        item.answer,
+        item.timestamp
+      )
     }
     
     return {
@@ -710,7 +1315,11 @@ const normalizeChatHistory = (history = []) =>
 
 const saveChatHistoryToLocal = () => {
   try {
-    localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(chatHistory.value))
+    const sanitizedHistory = chatHistory.value.map((item) => ({
+      ...item,
+      conversation: sanitizeConversation(item.conversation, item.question, item.answer, item.timestamp)
+    }))
+    localStorage.setItem(getUserChatHistoryKey(), JSON.stringify(sanitizedHistory))
   } catch (error) {
     console.error('保存聊天记录失败:', error)
   }
@@ -718,13 +1327,128 @@ const saveChatHistoryToLocal = () => {
 
 const loadChatHistoryFromLocal = () => {
   try {
-    const raw = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY)
+    const raw = localStorage.getItem(getUserChatHistoryKey())
     if (!raw) return []
     return normalizeChatHistory(JSON.parse(raw))
   } catch (error) {
     console.error('读取本地聊天记录失败:', error)
     return []
   }
+}
+
+// 清除当前用户的聊天历史
+const clearChatHistoryLocal = () => {
+  try {
+    localStorage.removeItem(getUserChatHistoryKey())
+  } catch (error) {
+    console.error('清除聊天记录失败:', error)
+  }
+}
+
+const getDisplayPlanTitle = (title = '') =>
+  String(title || '')
+    .replace(/^#+\s*/, '')
+    .replace(/^计划标题[:：]\s*/i, '')
+    .trim()
+
+const normalizeTrainingDayHeading = (text = '') =>
+  String(text || '')
+    .replace(/（\s*周[一二三四五六日天]\s*）/g, '')
+    .replace(/\(\s*周[一二三四五六日天]\s*\)/g, '')
+    .replace(/（\s*星期[一二三四五六日天]\s*）/g, '')
+    .replace(/\(\s*星期[一二三四五六日天]\s*\)/g, '')
+    .replace(/\s*[-—–]\s*周[一二三四五六日天]\s*$/g, '')
+    .replace(/\s*[-—–]\s*星期[一二三四五六日天]\s*$/g, '')
+    .trim()
+
+const extractPlanTitleFromContent = (content = '', fallback = 'AI Training Plan') => {
+  const text = String(content || '').replace(/\r\n/g, '\n')
+  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean)
+
+  const explicitTitleLine = lines.find((line) =>
+    /^#\s+/.test(line) ||
+    /^计划标题[:：]/.test(line) ||
+    /^#\s*计划标题[:：]?/i.test(line)
+  )
+
+  if (explicitTitleLine) {
+    const cleaned = getDisplayPlanTitle(explicitTitleLine.replace(/^#\s*/, ''))
+    if (cleaned) return cleaned
+  }
+
+  return getDisplayPlanTitle(fallback) || 'AI Training Plan'
+}
+
+const schedulerSignalLabels = {
+  planning: '更需要先明确训练目标、周期安排和整体节奏',
+  technique: '需要补充动作细节、发力方式和执行要点',
+  recovery: '需要兼顾身体恢复、伤痛规避和训练调整'
+}
+
+const formatSchedulerSignal = (signal = '') =>
+  schedulerSignalLabels[signal] || '系统补充了与你问题相关的专项建议'
+
+const getCoachDisplayName = (agentId = '') => {
+  if (agentId === 'planning') return '训练规划教练'
+  if (agentId === 'technique') return '技术指导教练'
+  if (agentId === 'recovery') return '运动康复教练'
+  return agentId
+}
+
+const getSchedulerHeadline = (coachCount = 0) =>
+  coachCount > 1 ? `${coachCount} 位教练一起为你整理了这份建议` : 'AI 教练为你整理了这份建议'
+
+const formatExecutionBatch = (batch = [], batchIndex = 0) => {
+  const coachNames = batch.map((agentId) => {
+    if (agentId === 'planning') return '训练规划教练'
+    if (agentId === 'technique') return '技术指导教练'
+    if (agentId === 'recovery') return '运动康复教练'
+    return agentId
+  }).join('、')
+
+  if (batchIndex === 0) return `先由 ${coachNames} 给出基础判断`
+  return `再由 ${coachNames} 补充细节与调整建议`
+}
+
+const buildSchedulerViewModel = (scheduler = {}, coaches = []) => {
+  const signals = Array.isArray(scheduler?.signals) ? scheduler.signals : []
+  const executionPlan = Array.isArray(scheduler?.execution_plan) ? scheduler.execution_plan : []
+  const safeCoaches = Array.isArray(coaches) ? coaches : []
+  const reasonText = signals.length
+    ? '为了让建议更完整、也更贴合你的情况，这次由不同方向的教练一起参与了分析。'
+    : ''
+
+  return {
+    signals,
+    executionPlan,
+    coaches: safeCoaches.map((coach) => ({
+      name: coach.name || getCoachDisplayName(coach.role) || '教练',
+      icon: coach.icon || '🤖',
+      role: coach.role || coach.name || 'coach'
+    })),
+    reasonText
+  }
+}
+
+const buildVisibleThinking = (thinking = '', progressLogs = []) => {
+  const cleanedThinking = removeMarkdownFormat(thinking || '').trim()
+  if (cleanedThinking) return cleanedThinking
+
+  const normalizedLogs = Array.isArray(progressLogs)
+    ? progressLogs.map((item) => String(item || '').trim()).filter(Boolean)
+    : []
+
+  if (!normalizedLogs.length) return ''
+
+  return normalizedLogs.map((item) => `- ${item}`).join('\n')
+}
+
+const stripSchedulerSection = (content = '') => {
+  const text = String(content || '')
+  return text.replace(
+    /^##\s+🧠\s*调度说明[\s\S]*?(?=\n##\s|$)/,
+    ''
+  ).trim()
 }
 
 const scrollToBottom = async () => {
@@ -758,7 +1482,7 @@ const deleteChatHistory = (index) => {
 const loadChatHistory = (index) => {
   currentChat.value = index
   const chat = chatHistory.value[index]
-  messages.value = (chat?.conversation || []).map(normalizeMessage)
+  messages.value = sanitizeConversation(chat?.conversation || [], chat?.question, chat?.answer, chat?.timestamp)
   scrollToBottom()
 }
 
@@ -773,7 +1497,7 @@ const buildPlanPayloadFromMessage = (message, planContext = null) => {
   const startDate = getToday()
 
   return {
-    title: buildPlanTitle(planContext),
+    title: extractPlanTitleFromContent(content, buildPlanTitle(planContext)),
     content,
     created_from_ai: true,
     goal: questionnaire.goal || 'AI 教练推荐',
@@ -867,7 +1591,7 @@ const createPlanCardMessage = (savedPlan, planContext = null) => {
     timestamp: new Date(),
     planCard: {
       planId: savedPlan.id,
-      title: removeMarkdownFormat(savedPlan.title || ''),
+      title: getDisplayPlanTitle(savedPlan.title || ''),
       subtitle: removeMarkdownFormat(questionnaire.goal || 'AI generated plan'),
       weeklyDays: questionnaire.weekly_days || 'TBD',
       duration: questionnaire.daily_duration || 'TBD',
@@ -887,6 +1611,24 @@ const createPlanFromAiResponse = async (message, planContext = null) => {
 
 const extractAnswer = (response) => response?.answer || response?.content || response?.response || '我已经收到你的问题，但暂时没有生成有效回复。'
 
+const isErrorLikeResponse = (content = '') => {
+  const text = String(content || '').trim()
+  if (!text) return true
+
+  const errorMarkers = [
+    '网络连接出现问题',
+    '请求处理超时',
+    '处理您的请求时出现错误',
+    '消息发送失败',
+    'ssl连接错误',
+    '系统错误',
+    '请稍后重试',
+    '技术信息：'
+  ]
+
+  return errorMarkers.some((marker) => text.includes(marker))
+}
+
 // 检测内容是否为训练计划
 const isTrainingPlanContent = (content = '') => {
   const cleanedText = removeMarkdownFormat(String(content)).toLowerCase()
@@ -895,6 +1637,12 @@ const isTrainingPlanContent = (content = '') => {
     '训练内容', '训练目标', '恢复建议', '训练时长', '训练强度'
   ]
   return trainingPlanKeywords.some(keyword => cleanedText.includes(keyword.toLowerCase()))
+}
+
+const shouldCreateTrainingPlan = (content = '', planContext = null) => {
+  if (isErrorLikeResponse(content)) return false
+  if (planContext) return true
+  return isTrainingPlanContent(content)
 }
 
 // 从训练计划内容中提取简要总结
@@ -930,9 +1678,15 @@ const extractTrainingSummary = (content = '') => {
 const updateCurrentConversation = (question, assistantMessage) => {
   if (currentChat.value !== null && chatHistory.value[currentChat.value]) {
     const target = chatHistory.value[currentChat.value]
-    target.conversation.push(
-      normalizeMessage({ role: 'user', content: question, timestamp: new Date() }),
-      assistantMessage
+    target.conversation = sanitizeConversation(
+      [
+        ...(target.conversation || []),
+        normalizeMessage({ role: 'user', content: question, timestamp: new Date() }),
+        assistantMessage
+      ],
+      question,
+      assistantMessage.content,
+      new Date()
     )
     target.question = question
     target.answer = assistantMessage.content
@@ -944,17 +1698,91 @@ const updateCurrentConversation = (question, assistantMessage) => {
     question,
     answer: assistantMessage.content,
     timestamp: new Date(),
-    conversation: [
-      normalizeMessage({ role: 'user', content: question, timestamp: new Date() }),
-      assistantMessage
-    ]
+    conversation: sanitizeConversation(
+      [
+        normalizeMessage({ role: 'user', content: question, timestamp: new Date() }),
+        assistantMessage
+      ],
+      question,
+      assistantMessage.content,
+      new Date()
+    )
   })
   currentChat.value = 0
+}
+
+const replacePlanConversationMessage = (conversation = [], message, updatedMessage, fallbackQuestion = '') => {
+  const nextConversation = [...(conversation || [])]
+  let idx = nextConversation.findIndex((item) => item.timestamp?.getTime?.() === message.timestamp?.getTime?.())
+
+  if (idx < 0) {
+    for (let i = nextConversation.length - 1; i >= 0; i -= 1) {
+      if (nextConversation[i].role === 'assistant' && isPlanLikeAssistantMessage(nextConversation[i])) {
+        idx = i
+        break
+      }
+    }
+  }
+
+  if (idx < 0) {
+    nextConversation.push(updatedMessage)
+  } else {
+    nextConversation.splice(idx, 1, updatedMessage)
+  }
+
+  return sanitizeConversation(nextConversation, fallbackQuestion, updatedMessage.content, updatedMessage.timestamp)
+}
+
+const buildUserProfileForQuery = (question, planContext = null) => {
+  const questionnaire = planContext?.questionnaire || {}
+  const injury =
+    questionnaire.injury === 'other'
+      ? questionnaire.injury_detail
+      : questionnaire.injury
+
+  return {
+    source: planContext ? 'training_questionnaire' : 'chat',
+    question,
+    goal: questionnaire.goal || '',
+    preferred_method: questionnaire.method || '',
+    weekly_days: questionnaire.weekly_days || '',
+    daily_duration: questionnaire.daily_duration || '',
+    intensity: questionnaire.intensity || '',
+    injury_status: injury || ''
+  }
+}
+
+const shouldUseMultiAgentQuery = (question, planContext = null) => {
+  if (!enableMultiAgent.value) return false
+  if (planContext?.questionnaire) return true
+
+  const normalizedQuestion = String(question || '').toLowerCase()
+  const multiAgentKeywords = [
+    '计划',
+    '规划',
+    '安排',
+    '训练日',
+    '动作',
+    '姿势',
+    '技术',
+    '疲劳',
+    '恢复',
+    '康复',
+    '伤',
+    '痛',
+    '风险',
+    '安全',
+    '评估'
+  ]
+
+  return multiAgentKeywords.some((keyword) => normalizedQuestion.includes(keyword))
 }
 
 const sendMessage = async (text = null, options = {}) => {
   const question = text || inputMessage.value.trim()
   const planContext = options.planContext || pendingPlanContext.value
+  const useMultiAgent = shouldUseMultiAgentQuery(question, planContext)
+  const userProfile = buildUserProfileForQuery(question, planContext)
   if (!question || loading.value) return
 
   messages.value.push(normalizeMessage({ role: 'user', content: question, timestamp: new Date() }))
@@ -975,10 +1803,12 @@ const sendMessage = async (text = null, options = {}) => {
     // 流式接收思考过程和答案
     let thinkingContent = ''
     let answerContent = ''
+    let schedulerInfo = null
+    let progressLogs = []
 
     await api.queryStream(
       question,
-      (chunk, type) => {
+      (chunk, type, data) => {
         if (type === 'thinking') {
           // 如果是第一次收到思考内容，自动展开思考过程
           if (thinkingContent === '') {
@@ -986,6 +1816,15 @@ const sendMessage = async (text = null, options = {}) => {
           }
           thinkingContent += chunk
           messages.value[assistantMessageIndex].thinking = removeMarkdownFormat(thinkingContent)
+        } else if (type === 'progress_log') {
+          if (data?.message) {
+            progressLogs = [...progressLogs, data.message]
+            messages.value[assistantMessageIndex].progressLogs = progressLogs
+          }
+        } else if (type === 'scheduler') {
+          schedulerInfo = buildSchedulerViewModel(data?.scheduler, data?.coaches)
+          messages.value[assistantMessageIndex].scheduler = schedulerInfo
+          messages.value[assistantMessageIndex].isSchedulerExpanded = true
         } else if (type === 'answer') {
           answerContent += chunk
           messages.value[assistantMessageIndex].content = answerContent
@@ -994,12 +1833,16 @@ const sendMessage = async (text = null, options = {}) => {
       },
       async (type) => {
         if (type !== 'answer') return
+        const finalAnswerContent = schedulerInfo ? stripSchedulerSection(answerContent) : answerContent
         // 流式完成
         const assistantMessage = normalizeMessage({
           role: 'assistant',
-          content: answerContent,
-          thinking: thinkingContent,
+          content: finalAnswerContent,
+          thinking: buildVisibleThinking(thinkingContent, progressLogs),
+          progressLogs,
+          scheduler: schedulerInfo,
           isThinkingExpanded: messages.value[assistantMessageIndex]?.isThinkingExpanded || false,
+          isSchedulerExpanded: messages.value[assistantMessageIndex]?.isSchedulerExpanded ?? true,
           timestamp: new Date()
         })
         
@@ -1007,7 +1850,7 @@ const sendMessage = async (text = null, options = {}) => {
         updateCurrentConversation(question, assistantMessage)
         
         // 如果存在planContext或者内容看起来像训练计划，则生成卡片
-        if (planContext || isTrainingPlanContent(answerContent)) {
+        if (shouldCreateTrainingPlan(answerContent, planContext || null)) {
           // 异步处理plan生成，不阻塞消息流
           generatePlanAsync(assistantMessage, planContext || null)
         }
@@ -1023,6 +1866,10 @@ const sendMessage = async (text = null, options = {}) => {
             timestamp: new Date()
           })
         )
+      },
+      {
+        useMultiAgent,
+        userProfile
       }
     )
 
@@ -1041,16 +1888,15 @@ const generatePlanAsync = async (message, planContext) => {
     const planCardMessage = createPlanCardMessage(savedPlan, planContext)
 
     // 创建更新后的消息对象 - 用简短总结替换完整训练计划文本，并添加卡片
-    const updatedMessage = {
+    const updatedMessage = normalizeMessage({
       ...message,
-      content: extractTrainingSummary(message.content),
+      content: '',
       planCard: planCardMessage.planCard
-    }
+    })
 
     // 更新messages数组中的对应消息（确保响应式更新）
     const index = messages.value.findIndex((msg) => msg.timestamp?.getTime?.() === message.timestamp?.getTime?.())
     if (index !== -1) {
-      // 使用splice确保响应式更新
       messages.value.splice(index, 1, updatedMessage)
     }
 
@@ -1059,11 +1905,16 @@ const generatePlanAsync = async (message, planContext) => {
 
     // 更新对话历史中的这条消息
     if (currentChat.value !== null && chatHistory.value[currentChat.value]) {
-      const conversation = chatHistory.value[currentChat.value].conversation || []
-      const idx = conversation.findIndex((item) => item.timestamp?.getTime?.() === message.timestamp?.getTime?.())
-      if (idx >= 0) {
-        conversation[idx] = updatedMessage
-      }
+      const target = chatHistory.value[currentChat.value]
+      target.conversation = replacePlanConversationMessage(
+        target.conversation || [],
+        message,
+        updatedMessage,
+        target.question || ''
+      )
+      // 同步更新 answer 字段
+      target.answer = updatedMessage.content
+      target.timestamp = new Date()
     }
   } catch (error) {
     console.error('训练计划生成失败:', error)
@@ -1075,12 +1926,12 @@ const generatePlan = async (message) => {
     const savedPlan = await createPlanFromAiResponse(message)
     const planCardMessage = createPlanCardMessage(savedPlan)
 
-    // 创建更新后的消息对象 - 用简短总结替换完整训练计划文本，并添加卡片
-    const updatedMessage = {
+    // 创建更新后的消息对象 - 清除原文内容，仅保留卡片
+    const updatedMessage = normalizeMessage({
       ...message,
-      content: extractTrainingSummary(message.content),
+      content: '',
       planCard: planCardMessage.planCard
-    }
+    })
 
     // 更新messages数组中的对应消息（确保响应式更新）
     const index = messages.value.findIndex((msg) => msg.timestamp?.getTime?.() === message.timestamp?.getTime?.())
@@ -1089,13 +1940,15 @@ const generatePlan = async (message) => {
     }
 
     if (currentChat.value !== null && chatHistory.value[currentChat.value]) {
-      const conversation = chatHistory.value[currentChat.value].conversation || []
-      const target = conversation.find((item) => item.timestamp?.getTime?.() === message.timestamp?.getTime?.())
-      if (target) {
-        target.content = updatedMessage.content
-        target.planCard = updatedMessage.planCard
-      }
-      chatHistory.value[currentChat.value].timestamp = new Date()
+      const target = chatHistory.value[currentChat.value]
+      target.conversation = replacePlanConversationMessage(
+        target.conversation || [],
+        message,
+        updatedMessage,
+        target.question || ''
+      )
+      target.answer = updatedMessage.content
+      target.timestamp = new Date()
     }
     await scrollToBottom()
   } catch (error) {
@@ -1109,6 +1962,35 @@ const normalizePreviewPlan = (plan) => ({
   metadata: plan?.metadata || {},
   selected_weekdays: Array.isArray(plan?.selected_weekdays) ? plan.selected_weekdays : []
 })
+
+const parseWeeklyDaysLimit = (value) => {
+  const match = String(value ?? '').match(/\d+/)
+  const parsed = match ? Number(match[0]) : NaN
+  if (!Number.isFinite(parsed) || parsed <= 0) return weekdayOptions.length
+  return Math.min(parsed, weekdayOptions.length)
+}
+
+const buildWeeklyTrainingDayTemplate = (weeklyDaysValue) => {
+  const weeklyDays = parseWeeklyDaysLimit(weeklyDaysValue)
+  const lines = []
+
+  for (let index = 1; index <= weeklyDays; index += 1) {
+    lines.push(`### 训练日${index}`)
+    lines.push('- 训练主题：')
+    lines.push('- 建议时长：')
+    lines.push('- 训练重点：')
+    lines.push('- 恢复建议：')
+    lines.push('- 替代方案：如无伤病风险不用写')
+    lines.push('')
+  }
+
+  return lines
+}
+
+const getPreviewWeekdayLimit = () => parseWeeklyDaysLimit(previewPlan.value?.metadata?.weekly_days)
+
+const isPreviewWeekdayDisabled = (day) =>
+  !previewWeekdays.value.includes(day) && previewWeekdays.value.length >= getPreviewWeekdayLimit()
 
 const closePlanPreviewModal = () => {
   showPlanPreviewModal.value = false
@@ -1132,6 +2014,8 @@ const viewPlanDetails = async (planId) => {
 }
 
 const togglePreviewWeekday = (day) => {
+  const limit = getPreviewWeekdayLimit()
+  if (!previewWeekdays.value.includes(day) && previewWeekdays.value.length >= limit) return
   previewWeekdays.value = previewWeekdays.value.includes(day)
     ? previewWeekdays.value.filter((item) => item !== day)
     : [...previewWeekdays.value, day]
@@ -1145,7 +2029,7 @@ const savePreviewWeekdays = async () => {
     await api.put(`/training/plans/${previewPlan.value.id}`, {
       selected_weekdays: [...previewWeekdays.value]
     })
-    localStorage.setItem(ACTIVE_PLAN_KEY, String(previewPlan.value.id))
+    localStorage.setItem(getUserActivePlanKey(), String(previewPlan.value.id))
     closePlanPreviewModal()
     router.push({ name: 'TrainingPlan' })
   } catch (error) {
@@ -1196,6 +2080,7 @@ const buildTrainingPrompt = () => {
     questionnaireData.value.injury === 'other'
       ? `其他伤病：${questionnaireData.value.injury_detail}`
       : questionnaireData.value.injury
+  const weeklyTrainingDayTemplate = buildWeeklyTrainingDayTemplate(questionnaireData.value.weekly_days)
 
   return [
     '请你扮演专业 AI 运动教练，根据以下用户问卷信息生成一个 1 个月训练计划。',
@@ -1206,28 +2091,19 @@ const buildTrainingPrompt = () => {
     '4. 如果用户有伤病困扰，必须主动规避高风险动作，并在对应训练日中写出替代方案或调整建议。',
     '5. 保持结构化输出，标题清晰，便于后续按卡片和训练日详情解析。',
     '6. 不要只给原则性建议，必须给出可执行的每日安排。',
+    '7. 不要使用 ---、*** 这类生硬分隔线，统一使用 Markdown 标题层级和空行来分段。',
+    '8. 在用户还没有手动选择每周训练日之前，不要擅自写“周一训练日”“周四训练日”这类具体周几，只能使用“训练日1 / 训练日2”这类通用编号。',
+    '9. 训练日标题禁止出现括号或连字符补充说明，例如不要写“训练日1（周一）”“训练日2(周四)”或“训练日1-周一”，只保留“训练日1”“训练日2”。',
     '',
     '请严格遵循下面的标准 Markdown 输出骨架：',
-    '# 计划标题',
+    '# 计划标题（只需要给出标题即可，不要带有“计划标题”这几个字）',
     '',
     '## 计划概述',
     '这里写目标、周期、每周频次、强度和注意事项。',
     '',
     '## 第1周',
     '',
-    '### 训练日1',
-    '- 训练主题：',
-    '- 建议时长：',
-    '- 训练重点：',
-    '- 恢复建议：',
-    '- 替代方案：如无伤病风险不用写',
-    '',
-    '### 训练日2',
-    '- 训练主题：',
-    '- 建议时长：',
-    '- 训练重点：',
-    '- 恢复建议：',
-    '- 替代方案：如无伤病风险不用写',
+    ...weeklyTrainingDayTemplate,
     '',
     '## 第2周',
     '...',
@@ -1242,6 +2118,24 @@ const buildTrainingPrompt = () => {
   ].join('\n')
 }
 
+const buildTrainingRequestMessage = () => {
+  const weeklyDays = questionnaireData.value.weekly_days || '未设置'
+  const injuryText =
+    questionnaireData.value.injury === 'other'
+      ? questionnaireData.value.injury_detail
+      : questionnaireData.value.injury
+
+  return [
+    `请根据我的问卷生成一个 1 个月训练计划。`,
+    `目标：${questionnaireData.value.goal || '未设置'}`,
+    `方式：${questionnaireData.value.method || '未设置'}`,
+    `频率：每周 ${weeklyDays} 天`,
+    `时长：每次 ${questionnaireData.value.daily_duration || '未设置'} 分钟`,
+    `强度：${questionnaireData.value.intensity || '未设置'}`,
+    `伤病情况：${injuryText || '无伤病困扰'}`
+  ].join('\n')
+}
+
 const nextQuestionnaireStep = async () => {
   if (!questionnaireCanProceed.value || loading.value) return
 
@@ -1252,8 +2146,10 @@ const nextQuestionnaireStep = async () => {
 
   // 生成训练计划
   const prompt = buildTrainingPrompt()
+  const requestMessage = buildTrainingRequestMessage()
   pendingPlanContext.value = {
     prompt,
+    requestMessage,
     questionnaire: { ...questionnaireData.value },
     createdAt: new Date().toISOString()
   }
@@ -1262,7 +2158,7 @@ const nextQuestionnaireStep = async () => {
   showQuestionnaireModal.value = false
 
   // 发送消息生成计划
-  await sendMessage(prompt, { planContext: pendingPlanContext.value })
+  await sendMessage(requestMessage, { planContext: pendingPlanContext.value })
 }
 
 const closeQuestionnaireModal = () => {
@@ -1276,6 +2172,155 @@ const closeQuestionnaireModal = () => {
     intensity: '',
     injury: '',
     injury_detail: ''
+  }
+}
+
+// 训练记录模态框
+const openTrainingRecordModal = () => {
+  showTrainingRecordModal.value = true
+  resetTrainingRecordForm()
+}
+
+const closeTrainingRecordModal = () => {
+  showTrainingRecordModal.value = false
+}
+
+const resetTrainingRecordForm = () => {
+  trainingRecordData.value = {
+    training_type: '',
+    duration: 30,
+    intensity: '',
+    fatigue_level: 3,
+    pain_level: 0,
+    notes: ''
+  }
+}
+
+const submitTrainingRecord = async () => {
+  if (!trainingRecordData.value.training_type) {
+    alert('请选择训练类型')
+    return
+  }
+
+  savingTrainingRecord.value = true
+
+  try {
+    await api.post('/training/records', {
+      date: new Date().toISOString().split('T')[0],
+      training_type: trainingRecordData.value.training_type,
+      duration: trainingRecordData.value.duration,
+      intensity: trainingRecordData.value.intensity,
+      fatigue_level: trainingRecordData.value.fatigue_level,
+      pain_level: trainingRecordData.value.pain_level,
+      notes: trainingRecordData.value.notes,
+      completion_status: 'completed'
+    })
+
+    alert('训练记录已保存！')
+    closeTrainingRecordModal()
+    resetTrainingRecordForm()
+  } catch (error) {
+    alert('保存失败：' + error.message)
+  } finally {
+    savingTrainingRecord.value = false
+  }
+}
+
+// 饮食记录模态框
+const openDietRecordModal = () => {
+  showDietRecordModal.value = true
+  resetDietRecordForm()
+}
+
+const closeDietRecordModal = () => {
+  showDietRecordModal.value = false
+}
+
+const resetDietRecordForm = () => {
+  dietRecordData.value = {
+    meal_type: '',
+    food_content: '',
+    calories: '',
+    protein: '',
+    notes: ''
+  }
+}
+
+const submitDietRecord = async () => {
+  if (!dietRecordData.value.meal_type || !dietRecordData.value.food_content) {
+    alert('请填写餐别和食物内容')
+    return
+  }
+
+  savingDietRecord.value = true
+
+  try {
+    await api.post('/daily/records', {
+      date: new Date().toISOString().split('T')[0],
+      meal_type: dietRecordData.value.meal_type,
+      food_content: dietRecordData.value.food_content,
+      calories: dietRecordData.value.calories,
+      protein: dietRecordData.value.protein,
+      notes: dietRecordData.value.notes
+    })
+
+    alert('饮食记录已保存！')
+    closeDietRecordModal()
+    resetDietRecordForm()
+  } catch (error) {
+    alert('保存失败：' + error.message)
+  } finally {
+    savingDietRecord.value = false
+  }
+}
+
+// 体重记录模态框
+const openWeightRecordModal = () => {
+  showWeightRecordModal.value = true
+  resetWeightRecordForm()
+}
+
+const closeWeightRecordModal = () => {
+  showWeightRecordModal.value = false
+}
+
+const resetWeightRecordForm = () => {
+  weightRecordData.value = {
+    weight: '',
+    body_fat: '',
+    chest_circumference: '',
+    waist_circumference: '',
+    hip_circumference: '',
+    notes: ''
+  }
+}
+
+const submitWeightRecord = async () => {
+  if (!weightRecordData.value.weight) {
+    alert('请输入体重')
+    return
+  }
+
+  savingWeightRecord.value = true
+
+  try {
+    await api.post('/weight/records', {
+      date: new Date().toISOString().split('T')[0],
+      weight: weightRecordData.value.weight,
+      body_fat: weightRecordData.value.body_fat,
+      chest_circumference: weightRecordData.value.chest_circumference,
+      waist_circumference: weightRecordData.value.waist_circumference,
+      hip_circumference: weightRecordData.value.hip_circumference,
+      notes: weightRecordData.value.notes
+    })
+
+    alert('体重记录已保存！')
+    closeWeightRecordModal()
+    resetWeightRecordForm()
+  } catch (error) {
+    alert('保存失败：' + error.message)
+  } finally {
+    savingWeightRecord.value = false
   }
 }
 
@@ -1296,6 +2341,15 @@ const loadPendingPrompt = () => {
 }
 
 onMounted(async () => {
+  try {
+    const savedMode = localStorage.getItem(getUserMultiAgentModeKey())
+    if (savedMode !== null) {
+      enableMultiAgent.value = savedMode === 'true'
+    }
+  } catch (error) {
+    console.error('读取多智能体模式失败:', error)
+  }
+
   const localHistory = loadChatHistoryFromLocal()
   if (localHistory.length) {
     chatHistory.value = localHistory
@@ -1312,9 +2366,17 @@ onMounted(async () => {
     const pendingPrompt = loadPendingPrompt()
     if (pendingPrompt?.prompt) {
       pendingPlanContext.value = pendingPrompt
-      await sendMessage(pendingPrompt.prompt, { planContext: pendingPrompt })
+      await sendMessage(pendingPrompt.requestMessage || pendingPrompt.prompt, { planContext: pendingPrompt })
       router.replace({ name: 'Chat' })
     }
+  }
+})
+
+watch(enableMultiAgent, (value) => {
+  try {
+    localStorage.setItem(getUserMultiAgentModeKey(), String(value))
+  } catch (error) {
+    console.error('保存多智能体模式失败:', error)
   }
 })
 
@@ -1365,6 +2427,7 @@ watch(
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 5px;
 }
 
 .sidebar-head,
@@ -1527,6 +2590,11 @@ watch(
   font-weight: 600;
 }
 
+.weekday-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .message-row {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
@@ -1544,8 +2612,9 @@ watch(
 
 .message-row.user .message-card {
   order: 1;
-  background: linear-gradient(135deg, #0d2b50, var(--color-accent));
-  color: #fff;
+  /* background: linear-gradient(135deg, #0d2b50, var(--color-accent)); */
+  background: #c2d8ee;
+  color: #000000;
 }
 
 .avatar {
@@ -1625,6 +2694,166 @@ watch(
   font-size: 13px;
 }
 
+.markdown-message :deep(.md-divider) {
+  border: none;
+  height: 1px;
+  margin: 18px 0 22px;
+  background: linear-gradient(90deg, transparent, rgba(0, 113, 227, 0.22), transparent);
+}
+
+/* ==================== 计划详情弹窗 markdown-content 样式 ==================== */
+.markdown-content {
+  color: var(--color-text-primary);
+  line-height: 1.75;
+}
+
+.markdown-content :deep(h1),
+.markdown-content :deep(h2),
+.markdown-content :deep(h3),
+.markdown-content :deep(h4) {
+  line-height: 1.3;
+  color: var(--color-text-primary);
+  margin: 0 0 12px;
+}
+
+.markdown-content :deep(h1) {
+  font-size: 28px;
+  margin-top: 0;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 113, 227, 0.12);
+}
+
+.markdown-content :deep(h2) {
+  font-size: 22px;
+  margin-top: 28px;
+  margin-bottom: 14px;
+  padding-left: 12px;
+  border-left: 4px solid var(--color-accent);
+}
+
+.markdown-content :deep(h3) {
+  font-size: 19px;
+  margin-top: 22px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: rgba(0, 113, 227, 0.05);
+  border: 1px solid rgba(0, 113, 227, 0.1);
+  border-radius: 14px;
+}
+
+.markdown-content :deep(.training-day-card) {
+  margin: 22px 0 26px;
+  padding: 18px 18px 8px;
+  background: linear-gradient(180deg, rgba(0, 113, 227, 0.06) 0%, rgba(255, 255, 255, 0.92) 100%);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 10px 26px rgba(0, 113, 227, 0.08);
+}
+
+.markdown-content :deep(.training-day-card h3) {
+  margin-top: 0;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(0, 113, 227, 0.14);
+}
+
+.markdown-content :deep(.training-day-card ul),
+.markdown-content :deep(.training-day-card ol) {
+  margin-bottom: 16px;
+}
+
+.markdown-content :deep(.training-day-card p:last-child),
+.markdown-content :deep(.training-day-card ul:last-child),
+.markdown-content :deep(.training-day-card ol:last-child),
+.markdown-content :deep(.training-day-card blockquote:last-child),
+.markdown-content :deep(.training-day-card table:last-child) {
+  margin-bottom: 10px;
+}
+
+.markdown-content :deep(h4) {
+  font-size: 15px;
+  margin-top: 14px;
+}
+
+.markdown-content :deep(p) {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.markdown-content :deep(ul) {
+  margin: 0 0 18px;
+  padding-left: 24px;
+}
+
+.markdown-content :deep(li) {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.markdown-content :deep(strong) {
+  font-weight: 700;
+  color: #173f34;
+}
+
+.markdown-content :deep(code) {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 113, 227, 0.08);
+  font-size: 12px;
+}
+
+.markdown-content :deep(blockquote) {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--color-accent);
+  background: rgba(0, 113, 227, 0.05);
+  border-radius: 0 12px 12px 0;
+}
+
+.markdown-content :deep(ol) {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+
+.markdown-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(23, 63, 52, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.markdown-content :deep(th),
+.markdown-content :deep(td) {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(23, 63, 52, 0.08);
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.markdown-content :deep(th) {
+  background: rgba(0, 113, 227, 0.06);
+  font-weight: 700;
+}
+
+.markdown-content :deep(tr:last-child td) {
+  border-bottom: none;
+}
+
+.markdown-content :deep(.md-divider) {
+  border: none;
+  height: 1px;
+  margin: 18px 0 22px;
+  background: linear-gradient(90deg, transparent, rgba(0, 113, 227, 0.18), transparent);
+}
+
 .inline-plan-btn {
   margin-top: 12px;
   padding: 10px 14px;
@@ -1685,12 +2914,6 @@ watch(
   color: var(--color-accent);
 }
 
-.plan-summary-card {
-  background: rgba(0, 113, 227, 0.04);
-  border-radius: 18px;
-  padding: 18px;
-  border: 1px solid rgba(0, 113, 227, 0.12);
-}
 
 .summary-title {
   display: flex;
@@ -1791,6 +3014,75 @@ watch(
 
 .quick-actions {
   margin-top: 18px;
+}
+
+.response-mode-card {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(0, 113, 227, 0.05);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+}
+
+.response-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.response-mode-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.response-mode-slider {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(134, 134, 139, 0.35);
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.response-mode-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  transition: transform 0.2s ease;
+}
+
+.response-mode-toggle input:checked + .response-mode-slider {
+  background: var(--color-accent);
+}
+
+.response-mode-toggle input:checked + .response-mode-slider::after {
+  transform: translateX(18px);
+}
+
+.response-mode-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-text-primary);
+}
+
+.response-mode-copy strong {
+  font-size: 14px;
+}
+
+.response-mode-copy small {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 .input-bar {
@@ -2063,11 +3355,148 @@ watch(
   font-size: 13px;
   color: var(--color-accent);
   line-height: 1.6;
+  display: grid;
+  gap: 14px;
 }
 
 .thinking-line {
   margin: 6px 0;
   white-space: pre-wrap;
+}
+
+.progress-block,
+.thinking-block {
+  padding: 0;
+}
+
+.progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-tag {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #173f34;
+}
+
+.progress-count {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.progress-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.progress-item {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.scheduler-card {
+  margin-bottom: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(0, 113, 227, 0.05);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+}
+
+.scheduler-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.scheduler-tag {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.scheduler-head h4 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--color-text-primary);
+}
+
+.scheduler-toggle {
+  border: none;
+  background: transparent;
+  color: var(--color-accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scheduler-copy {
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.scheduler-chip-row {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scheduler-chip,
+.scheduler-batch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-primary);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.scheduler-details {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 113, 227, 0.12);
+  display: grid;
+  gap: 14px;
+}
+
+.scheduler-detail-block h5 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.scheduler-detail-block ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-text-secondary);
+}
+
+.scheduler-detail-block li {
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+
+.scheduler-batches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* 加载状态样式 */
@@ -2120,6 +3549,146 @@ watch(
 
   .input-bar {
     grid-template-columns: 1fr;
+  }
+}
+
+/* 快速操作按钮图标样式 */
+.quick-icon {
+  font-size: 16px;
+  margin-right: 6px;
+}
+
+/* 记录模态框样式 */
+.record-modal {
+  max-width: 500px;
+}
+
+.record-modal-head {
+  margin-bottom: 10px;
+}
+
+.record-modal-head .coach-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 113, 227, 0.08);
+  color: var(--color-accent);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.record-modal-head h2 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+}
+
+.record-modal-head .modal-copy {
+  margin: 0;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.range-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.fatigue-option,
+.pain-option {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fatigue-option.selected,
+.pain-option.selected {
+  background-color: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.fatigue-option:hover,
+.pain-option:hover {
+  border-color: #4CAF50;
+}
+
+.measure-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.measure-inputs > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.measure-inputs > div label {
+  font-size: 12px;
+  color: #666;
+}
+
+.weight-input {
+  font-size: 18px;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .record-modal {
+    padding: 24px 18px;
+  }
+
+  .form-row,
+  .measure-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .range-selector {
+    flex-wrap: wrap;
   }
 }
 </style>

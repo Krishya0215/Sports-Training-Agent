@@ -290,28 +290,36 @@ you can still chat politely, but try to guide the conversation back to fitness t
         logger.info("记忆更新完成")
         return state
     
-    def query(self, question: str, return_thinking: bool = True) -> dict:
+    def query(self, question: str, return_thinking: bool = True, memory_context: dict = None) -> dict:
         """
         处理用户查询
-        
+
         Args:
             question: 用户问题
             return_thinking: 是否返回思考过程
-            
+            memory_context: 用户记忆上下文（语义记忆、情景记忆等）
+
         Returns:
             包含答案和思考过程的字典
         """
+        # 构建记忆上下文字符串
+        memory_prompt = ""
+        if memory_context:
+            from backend.memory_service import memory_service
+            memory_prompt = memory_service.build_memory_prompt(memory_context.get("user_id", 0) if memory_context.get("user_id") else 0, memory_context)
+
         # 初始化状态
         initial_state = {
             "question": question,
             "chat_history": "",
             "retrieved_docs": [],
-            "context": "",
+            "context": memory_prompt or "",  # 将记忆上下文注入到 context
             "answer": "",
             "iteration": 0,
             "question_type": "unknown",
             "use_rag": False,
-            "classification_confidence": 0
+            "classification_confidence": 0,
+            "memory_context": memory_context or {}  # 传递完整的记忆上下文
         }
         
         # 执行图，添加重试逻辑

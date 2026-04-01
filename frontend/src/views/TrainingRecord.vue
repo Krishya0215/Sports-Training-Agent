@@ -201,7 +201,7 @@ export default {
     const loadRecords = async () => {
       try {
         const response = await api.get('/training/records')
-        records.value = response.data.records.sort((a, b) => 
+        records.value = (response.records || []).sort((a, b) => 
           new Date(b.date) - new Date(a.date)
         )
       } catch (error) {
@@ -217,11 +217,11 @@ export default {
         }
 
         const response = await api.post('/training/records', formData.value)
-        records.value.unshift(response.data.record)
+        records.value.unshift(response.record)
         
         // 显示AI建议
-        if (response.data.suggestion) {
-          aiSuggestion.value = response.data.suggestion
+        if (response.suggestion) {
+          aiSuggestion.value = response.suggestion
         }
 
         closeDialog()

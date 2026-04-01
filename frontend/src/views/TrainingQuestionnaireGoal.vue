@@ -11,7 +11,7 @@
         </router-link>
 
         <div>
-          <div class="coach-tag">AI 教练 · 卡卡</div>
+          <div class="coach-tag">AI 教练</div>
           <h1>你的运动目标是什么？</h1>
           <p>先告诉我你最关心的训练目标，我会带你进入更完整的问卷，最后生成专属训练计划。</p>
         </div>

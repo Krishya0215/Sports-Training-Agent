@@ -10,7 +10,7 @@
           </svg>
         </router-link>
         <div class="header-copy">
-          <div class="coach-tag">AI 教练 · 卡卡</div>
+          <div class="coach-tag">AI 教练</div>
           <h1>{{ currentQuestion.title }}</h1>
           <p>{{ currentQuestion.subtitle }}</p>
         </div>
@@ -54,6 +54,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Navbar from '../components/Navbar.vue'
+import api from '../api'
 
 const PRESELECTED_GOAL_KEY = 'selectedTrainingGoal'
 
@@ -166,6 +167,30 @@ const selectOption = (value) => {
   questionnaire.value[currentQuestion.value.key] = value
 }
 
+const parseWeeklyDaysLimit = (value) => {
+  const match = String(value ?? '').match(/\d+/)
+  const parsed = match ? Number(match[0]) : NaN
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1
+  return Math.min(parsed, 7)
+}
+
+const buildWeeklyTrainingDayTemplate = (weeklyDaysValue) => {
+  const weeklyDays = parseWeeklyDaysLimit(weeklyDaysValue)
+  const lines = []
+
+  for (let index = 1; index <= weeklyDays; index += 1) {
+    lines.push(`### 训练日${index}`)
+    lines.push('- 训练主题：')
+    lines.push('- 建议时长：')
+    lines.push('- 训练重点：')
+    lines.push('- 恢复建议：')
+    lines.push('- 替代方案：如无伤病风险不用写')
+    lines.push('')
+  }
+
+  return lines
+}
+
 const prevStep = () => {
   if (stepIndex.value > 0) stepIndex.value -= 1
 }
@@ -175,6 +200,7 @@ const buildPrompt = () => {
     questionnaire.value.injury === 'other'
       ? `其他伤病：${questionnaire.value.injury_detail}`
       : questionnaire.value.injury
+  const weeklyTrainingDayTemplate = buildWeeklyTrainingDayTemplate(questionnaire.value.weekly_days)
 
   return [
     '请你扮演专业 AI 运动教练，根据以下用户问卷信息生成一个 1 个月训练计划。',
@@ -185,28 +211,19 @@ const buildPrompt = () => {
     '4. 如果用户有伤病困扰，必须主动规避高风险动作，并在对应训练日中写出替代方案或调整建议。',
     '5. 保持结构化输出，标题清晰，便于后续按卡片和训练日详情解析。',
     '6. 不要只给原则性建议，必须给出可执行的每日安排。',
+    '7. 不要使用 ---、*** 这类生硬分隔线，统一使用 Markdown 标题层级和空行来分段。',
+    '8. 在用户还没有手动选择每周训练日之前，不要擅自写“周一训练日”“周四训练日”这类具体周几，只能使用“训练日1 / 训练日2”这类通用编号。',
+    '9. 训练日标题禁止出现括号或连字符补充说明，例如不要写“训练日1（周一）”“训练日2(周四)”或“训练日1-周一”，只保留“训练日1”“训练日2”。',
     '',
     '请严格遵循下面的标准 Markdown 输出骨架：',
-    '# 计划标题',
+    '# 计划标题（只需要给出标题即可，不要带有“计划标题”这几个字）',
     '',
     '## 计划概述',
     '这里写目标、周期、每周频次、强度和注意事项。',
     '',
     '## 第1周',
     '',
-    '### 训练日1',
-    '- 训练主题：',
-    '- 建议时长：',
-    '- 训练重点：',
-    '- 恢复建议：',
-    '- 替代方案：如无伤病风险不用写',
-    '',
-    '### 训练日2',
-    '- 训练主题：',
-    '- 建议时长：',
-    '- 训练重点：',
-    '- 恢复建议：',
-    '- 替代方案：如无伤病风险不用写',
+    ...weeklyTrainingDayTemplate,
     '',
     '## 第2周',
     '...',
@@ -221,6 +238,23 @@ const buildPrompt = () => {
   ].join('\n')
 }
 
+const buildRequestMessage = () => {
+  const injuryText =
+    questionnaire.value.injury === 'other'
+      ? questionnaire.value.injury_detail
+      : questionnaire.value.injury
+
+  return [
+    '请根据我的问卷生成一个 1 个月训练计划。',
+    `目标：${questionnaire.value.goal || '未设置'}`,
+    `方式：${questionnaire.value.method || '未设置'}`,
+    `频率：每周 ${questionnaire.value.weekly_days || '未设置'} 天`,
+    `时长：每次 ${questionnaire.value.daily_duration || '未设置'} 分钟`,
+    `强度：${questionnaire.value.intensity || '未设置'}`,
+    `伤病情况：${injuryText || '无伤病困扰'}`
+  ].join('\n')
+}
+
 const nextStep = async () => {
   if (!canProceed.value || loading.value) return
 
@@ -232,10 +266,28 @@ const nextStep = async () => {
   loading.value = true
 
   const prompt = buildPrompt()
+  const requestMessage = buildRequestMessage()
+
+  try {
+    await api.initializeProfile({
+      goal: questionnaire.value.goal || null,
+      preferred_method: questionnaire.value.method || null,
+      weekly_days: parseWeeklyDaysLimit(questionnaire.value.weekly_days),
+      daily_duration: Number(questionnaire.value.daily_duration || 0) || null,
+      intensity_level: questionnaire.value.intensity || null,
+      injury_status: questionnaire.value.injury || null,
+      injury_detail: questionnaire.value.injury_detail || null,
+      profile_source: 'training_questionnaire'
+    })
+  } catch (error) {
+    console.error('初始化用户画像失败，将继续生成训练计划:', error)
+  }
+
   sessionStorage.setItem(
     'pendingTrainingPrompt',
     JSON.stringify({
       prompt,
+      requestMessage,
       questionnaire: { ...questionnaire.value },
       createdAt: new Date().toISOString()
     })

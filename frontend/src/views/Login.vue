@@ -79,8 +79,8 @@ const handleLogin = async () => {
         // 跳转到基础信息填写页
         router.push('/profile-setup')
       } else {
-        // 跳转到首页
-        router.push('/')
+        // 跳转到AI教练页
+        router.push('/chat')
       }
     } else {
       errorMessage.value = result.message

@@ -169,24 +169,7 @@
                     </svg>
                   </button>
                 </div>
-                <div class="entry-details">
-                  <div class="detail-item">
-                    <span class="detail-label">时长</span>
-                    <span class="detail-value">{{ detailEntry.duration }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">训练重点</span>
-                    <span class="detail-value">{{ detailEntry.focus }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">恢复建议</span>
-                    <span class="detail-value">{{ detailEntry.recovery }}</span>
-                  </div>
-                  <div class="detail-item full-width">
-                    <span class="detail-label">训练内容</span>
-                    <div class="detail-text markdown-content entry-markdown" v-html="renderPlanContent(detailEntry.summary)"></div>
-                  </div>
-                </div>
+                <div class="entry-markdown-wrapper markdown-content entry-markdown" v-html="renderPlanContent(detailEntry.summary, { skipFirstDayHeading: true })"></div>
               </div>
             </div>
           </main>
@@ -200,27 +183,12 @@
             <!-- 顶部：管理你的训练计划 + 当前计划 + 历史计划 -->
             <div class="dashboard-top">
               <div class="current-plan-card">
-                <div class="management-intro">
-                  <!-- <div class="management-text">
-                    <p class="card-label">Training Plans</p>
-                    <h2 class="management-title">管理你的训练计划</h2>
-                    <p class="management-description">查看当前计划、切换历史计划，并在日历中查看每日训练内容。</p>
-                  </div> -->
-                  <button type="button" class="btn btn-primary management-create-btn" @click="goCreatePlan">
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 5v14M5 12h14"/>
-                    </svg>
-                    创建新计划
-                  </button>
-                </div>
-
-                <div class="card-section-divider"></div>
 
                 <div class="plan-card-header">
                   <div>
                     <p class="card-label">Current Plan</p>
                     <h2 class="card-title">{{ currentPlan.title }}</h2>
-                    <p class="card-subtitle">{{ planSubtitle(currentPlan) }}</p>
+                    <!-- <p class="card-subtitle">{{ planSubtitle(currentPlan) }}</p> -->
                   </div>
                   <div v-if="currentPlan.created_from_ai" class="badge badge-ai">AI 生成</div>
                 </div>
@@ -233,7 +201,7 @@
                 </div>
 
                 <div class="plan-actions">
-                  <button type="button" class="btn btn-primary" @click="openPlanDetail(currentPlan.id)">
+                  <button type="button" class="btn btn-primary" @click="openPlanDetail(currentPlan)">
                     <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                       <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -263,30 +231,40 @@
                   </div>
 
                   <div v-if="historyPlans.length" class="history-list">
-                    <div v-for="plan in historyPlans" :key="plan.id" class="history-item">
+                    <div class="history-item">
                       <div class="history-item-header">
                         <div>
-                          <h4>{{ plan.title }}</h4>
-                          <p class="item-subtitle">{{ plan.goal || 'AI 教练推荐' }}</p>
+                          <h4>{{ currentHistoryPlan.title }}</h4>
+                          <p class="item-subtitle">{{ currentHistoryPlan.goal || 'AI 教练推荐' }}</p>
                         </div>
-                        <div v-if="plan.created_from_ai" class="badge badge-ai small">AI</div>
+                        <span v-if="currentHistoryPlan.created_from_ai" class="badge badge-ai small">AI</span>
                       </div>
 
                       <div class="item-tags">
-                        <span class="tag small">{{ getWeekdaysLabel(plan) }}</span>
-                        <span class="tag small">{{ plan.metadata?.intensity || '强度待定' }}</span>
+                        <span class="tag small">{{ currentHistoryPlan.metadata?.weekly_days ? `每周 ${currentHistoryPlan.metadata.weekly_days} 天` : '频率待定' }}</span>
+                        <span class="tag small">{{ currentHistoryPlan.metadata?.daily_duration ? `${currentHistoryPlan.metadata.daily_duration} 分钟` : '时长待定' }}</span>
+                        <span class="tag small">{{ currentHistoryPlan.metadata?.intensity || '强度待定' }}</span>
+                        <span class="tag small">{{ getWeekdaysLabel(currentHistoryPlan) }}</span>
                       </div>
 
                       <div class="item-actions">
-                        <button type="button" class="btn btn-secondary small" @click="switchCurrentPlan(plan.id)">
+                        <button type="button" class="btn btn-secondary small" @click="switchCurrentPlan(currentHistoryPlan.id)">
                           设为当前
                         </button>
-                        <button type="button" class="btn btn-outline small" @click="openPlanDetail(plan.id)">
+                        <button type="button" class="btn btn-outline small" @click="openPlanDetail(currentHistoryPlan)">
                           详情
                         </button>
-                        <button type="button" class="btn btn-outline small" @click="openEditModal(plan)">
+                        <button type="button" class="btn btn-outline small" @click="openEditModal(currentHistoryPlan)">
                           修改
                         </button>
+                      </div>
+
+                      <div class="history-footer">
+                        <div class="history-nav">
+                          <button type="button" class="btn btn-outline small" @click="prevHistory" :disabled="historyPage === 0">&lt;</button>
+                          <span class="history-nav-label">{{ historyPage + 1 }} / {{ historyPlans.length }}</span>
+                          <button type="button" class="btn btn-outline small" @click="nextHistory" :disabled="historyPage >= historyPlans.length - 1">&gt;</button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -340,34 +318,16 @@
               <div class="board-entry-card">
                 <div class="board-entry-header">
                   <div>
-                    <span class="entry-date">{{ formatDate(boardEntry.date) }}</span>
-                    <h4>{{ boardEntry.title }}</h4>
-                    <p class="board-entry-plan">{{ currentPlan.title }}</p>
+                    <!-- <span class="entry-date">{{ formatDate(boardEntry.date) }}</span> -->
+                    <h4>{{ formatDate(boardEntry.date) }}</h4>
                   </div>
-                  <button type="button" class="btn btn-icon" @click="closeBoardEntry">
+                  <button type="button" class="btn btn-icon board-entry-close" @click="closeBoardEntry">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                   </button>
                 </div>
-                <div class="entry-details">
-                  <div class="detail-item">
-                    <span class="detail-label">时长</span>
-                    <span class="detail-value">{{ boardEntry.duration }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">训练重点</span>
-                    <span class="detail-value">{{ boardEntry.focus }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">恢复建议</span>
-                    <span class="detail-value">{{ boardEntry.recovery }}</span>
-                  </div>
-                  <div class="detail-item full-width">
-                    <span class="detail-label">训练内容</span>
-                    <div class="detail-text markdown-content entry-markdown" v-html="renderPlanContent(boardEntry.summary)"></div>
-                  </div>
-                </div>
+                <div class="entry-markdown-wrapper markdown-content entry-markdown" v-html="renderPlanContent(boardEntry.summary, { skipFirstDayHeading: true })"></div>
               </div>
             </div>
           </div>
@@ -377,7 +337,7 @@
             <!-- 顶部：管理你的训练计划 + 当前计划占位 + 历史计划占位 -->
             <div class="dashboard-top">
               <div class="placeholder-card current-placeholder">
-                <div class="management-intro">
+                <!-- <div class="management-intro">
                   <div class="management-text">
                     <p class="card-label">Training Plans</p>
                     <h2 class="management-title">管理你的训练计划</h2>
@@ -391,7 +351,7 @@
                   </button>
                 </div>
 
-                <div class="card-section-divider"></div>
+                <div class="card-section-divider"></div> -->
 
                 <div class="placeholder-illustration">
                   <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -486,6 +446,9 @@
         </div>
         <div class="modal-body">
           <p class="modal-description">只有你确认的训练日，才会同步到训练计划日历中。</p>
+          <p class="modal-description">
+            最多可选择 {{ getPlanWeekdayLimit(weekdayPlan) }} 个训练日。
+          </p>
           <div class="weekday-selector">
             <div class="weekday-grid">
               <button
@@ -494,6 +457,7 @@
                 type="button"
                 class="weekday-option"
                 :class="{ selected: weekdayDraft.includes(day) }"
+                :disabled="isWeekdayDisabled(day)"
                 @click="toggleWeekday(day)"
               >
                 <span class="weekday-text">{{ day }}</span>
@@ -575,6 +539,30 @@
               </div>
             </div>
             <div class="form-group full-width">
+              <div class="form-label">
+                <span class="label-text">训练日</span>
+                <p class="form-hint">最多可选择 {{ getEditWeekdayLimit() }} 个训练日。</p>
+                <div class="weekday-grid edit-weekday-grid">
+                  <button
+                    v-for="day in weekdayHeaders"
+                    :key="`edit-${day}`"
+                    type="button"
+                    class="weekday-option"
+                    :class="{ selected: editForm.selected_weekdays.includes(day) }"
+                    :disabled="isEditWeekdayDisabled(day)"
+                    @click="toggleEditWeekday(day)"
+                  >
+                    <span class="weekday-text">{{ day }}</span>
+                    <span v-if="editForm.selected_weekdays.includes(day)" class="weekday-check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M5 13l4 4L19 7"/>
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="form-group full-width">
               <label class="form-label">
                 <span class="label-text">计划内容</span>
                 <textarea v-model="editForm.content" rows="12" class="form-textarea" placeholder="详细描述训练计划内容..."></textarea>
@@ -593,6 +581,86 @@
         </div>
       </div>
     </div>
+
+    <div v-if="planDetail" class="modal-overlay" @click.self="closePlanDetail">
+      <div class="modal-container wide">
+        <div class="modal-header">
+          <h3 class="modal-title">
+            <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            训练计划详情
+          </h3>
+          <button type="button" class="btn btn-icon modal-close" @click="closePlanDetail">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="plan-card">
+            <div class="plan-header">
+              <div class="plan-badge-row">
+                <span v-if="planDetail.created_from_ai" class="badge badge-ai">AI 生成</span>
+                <span class="badge badge-method">{{ planDetail.metadata?.method || '综合训练' }}</span>
+              </div>
+              <h2 class="plan-title">{{ planDetail.title }}</h2>
+              <p class="plan-subtitle">{{ planSubtitle(planDetail) }}</p>
+            </div>
+            <div class="plan-meta-grid">
+              <div class="meta-item">
+                <div class="meta-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="meta-label">训练目标</p>
+                  <p class="meta-value">{{ planDetail.goal || 'AI 教练推荐' }}</p>
+                </div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="meta-label">计划周期</p>
+                  <p class="meta-value">{{ formatDate(planDetail.start_date) }} - {{ formatDate(planDetail.end_date) }}</p>
+                </div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="meta-label">训练日</p>
+                  <p class="meta-value">{{ getWeekdaysLabel(planDetail) }}</p>
+                </div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="meta-label">训练强度</p>
+                  <p class="meta-value">{{ planDetail.metadata?.intensity || '中等' }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="plan-content">
+              <h3 class="content-title">计划内容</h3>
+              <div class="content-body markdown-content" v-html="renderPlanContent(planDetail.content)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 <script setup>
@@ -602,6 +670,13 @@ import Navbar from '../components/Navbar.vue'
 import api from '../api'
 
 const ACTIVE_PLAN_KEY = 'sports-training-active-plan-id'
+
+// 获取当前用户的 active plan 存储 key
+const getUserActivePlanKey = () => {
+  const userInfo = JSON.parse(localStorage.getItem('user') || 'null')
+  const userId = userInfo?.id || 'anonymous'
+  return `${ACTIVE_PLAN_KEY}-${userId}`
+}
 const weekdayHeaders = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 // 清理Markdown格式符号
@@ -718,6 +793,7 @@ const activePlanId = ref(null)
 const currentMonth = ref(new Date())
 const boardEntry = ref(null)
 const detailEntry = ref(null)
+const planDetail = ref(null)
 
 const showWeekdayModal = ref(false)
 const weekdayPlan = ref(null)
@@ -732,7 +808,8 @@ const editForm = ref({
   weekly_days: '',
   daily_duration: '',
   intensity: '',
-  content: ''
+  content: '',
+  selected_weekdays: []
 })
 
 const isDetailView = computed(() => Boolean(Number(route.query.planId)))
@@ -747,10 +824,49 @@ const sortedPlans = computed(() =>
 
 const currentPlan = computed(() => sortedPlans.value.find((plan) => plan.id === activePlanId.value) || sortedPlans.value[0] || null)
 const historyPlans = computed(() => sortedPlans.value.filter((plan) => plan.id !== currentPlan.value?.id))
+const historyPage = ref(0)
+const currentHistoryPlan = computed(() => historyPlans.value[historyPage.value] || historyPlans.value[0] || null)
 const monthLabel = computed(() => `${currentMonth.value.getFullYear()} 年 ${currentMonth.value.getMonth() + 1} 月`)
+const prevHistory = () => {
+  if (historyPage.value > 0) historyPage.value -= 1
+}
+const nextHistory = () => {
+  if (historyPage.value < historyPlans.value.length - 1) historyPage.value += 1
+}
+watch(historyPlans, (plans) => {
+  if (historyPage.value > plans.length - 1) {
+    historyPage.value = Math.max(plans.length - 1, 0)
+  }
+})
+
+const getDisplayPlanTitle = (title = '', content = '') => {
+  const cleanedTitle = String(title || '')
+    .replace(/^#+\s*/, '')
+    .replace(/^计划标题[:：]\s*/i, '')
+    .trim()
+
+  if (cleanedTitle) return cleanedTitle
+
+  const lines = String(content || '').replace(/\r\n/g, '\n').split('\n').map((line) => line.trim()).filter(Boolean)
+  const titleLine = lines.find((line) => /^#\s+/.test(line) || /^计划标题[:：]/.test(line) || /^#\s*计划标题[:：]?/i.test(line))
+  return titleLine
+    ? String(titleLine).replace(/^#\s*/, '').replace(/^计划标题[:：]\s*/i, '').trim()
+    : ''
+}
+
+const normalizeTrainingDayHeading = (text = '') =>
+  String(text || '')
+    .replace(/（\s*周[一二三四五六日天]\s*）/g, '')
+    .replace(/\(\s*周[一二三四五六日天]\s*\)/g, '')
+    .replace(/（\s*星期[一二三四五六日天]\s*）/g, '')
+    .replace(/\(\s*星期[一二三四五六日天]\s*\)/g, '')
+    .replace(/\s*[-—–]\s*周[一二三四五六日天]\s*$/g, '')
+    .replace(/\s*[-—–]\s*星期[一二三四五六日天]\s*$/g, '')
+    .trim()
 
 const normalizePlan = (plan = {}) => ({
   ...plan,
+  title: getDisplayPlanTitle(plan.title, plan.content) || plan.title || '',
   metadata: plan.metadata || {},
   selected_weekdays: Array.isArray(plan.selected_weekdays) ? plan.selected_weekdays : []
 })
@@ -773,6 +889,17 @@ const getDateKey = (value) => {
 }
 
 const getSelectedWeekdays = (plan) => (Array.isArray(plan?.selected_weekdays) ? plan.selected_weekdays : [])
+
+const parseWeeklyDaysLimit = (value) => {
+  const match = String(value ?? '').match(/\d+/)
+  const parsed = match ? Number(match[0]) : NaN
+  if (!Number.isFinite(parsed) || parsed <= 0) return weekdayHeaders.length
+  return Math.min(parsed, weekdayHeaders.length)
+}
+
+const getPlanWeekdayLimit = (plan) => parseWeeklyDaysLimit(plan?.metadata?.weekly_days)
+
+const getEditWeekdayLimit = () => parseWeeklyDaysLimit(editForm.value.weekly_days)
 
 const getWeekdaysLabel = (plan) => {
   const weekdays = getSelectedWeekdays(plan)
@@ -799,16 +926,31 @@ const formatInlineMarkdown = (text = '') =>
     .replace(/__(.+?)__/g, '<strong>$1</strong>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
 
-const renderPlanContent = (content = '') => {
+const renderPlanContent = (content = '', opts = {}) => {
   const lines = String(content || '').replace(/\r\n/g, '\n').split('\n')
   const html = []
   let inList = false
+  let inNestedList = false
+  let inOrderedList = false
   let inParagraph = false
+  let inBlockquote = false
+  let inTable = false
+  let tableHeaderParsed = false
+  let inTrainingDayCard = false
+  let skippedFirstDayHeading = false
 
   const closeList = () => {
+    if (inNestedList) {
+      html.push('</ul></li>')
+      inNestedList = false
+    }
     if (inList) {
       html.push('</ul>')
       inList = false
+    }
+    if (inOrderedList) {
+      html.push('</ol>')
+      inOrderedList = false
     }
   }
 
@@ -819,17 +961,116 @@ const renderPlanContent = (content = '') => {
     }
   }
 
-  for (const rawLine of lines) {
+  const closeBlockquote = () => {
+    if (inBlockquote) {
+      closeParagraph()
+      html.push('</blockquote>')
+      inBlockquote = false
+    }
+  }
+
+  const closeTable = () => {
+    if (inTable) {
+      html.push('</tbody></table>')
+      inTable = false
+      tableHeaderParsed = false
+    }
+  }
+
+  const closeTrainingDayCard = () => {
+    if (inTrainingDayCard) {
+      closeTable()
+      closeBlockquote()
+      closeList()
+      closeParagraph()
+      html.push('</section>')
+      inTrainingDayCard = false
+    }
+  }
+
+  const parseTableCells = (value = '') =>
+    value
+      .split('|')
+      .map((cell) => cell.trim())
+      .filter(Boolean)
+
+  const appendTableRow = (cells = [], tag = 'td') => {
+    html.push('<tr>')
+    cells.forEach((cell) => {
+      html.push(`<${tag}>${formatInlineMarkdown(cell)}</${tag}>`)
+    })
+    html.push('</tr>')
+  }
+
+  const getNextNonEmptyLine = (startIndex) => {
+    for (let nextIndex = startIndex + 1; nextIndex < lines.length; nextIndex += 1) {
+      const candidate = lines[nextIndex].trim()
+      if (candidate) return candidate
+    }
+    return ''
+  }
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const rawLine = lines[lineIndex]
     const line = rawLine.trim()
 
     if (!line) {
+      closeTrainingDayCard()
+      closeTable()
+      closeBlockquote()
       closeList()
       closeParagraph()
       continue
     }
 
+    const tableCells = parseTableCells(line)
+    const isTableSeparator = /^[\s|:-]+$/.test(line)
+    if ((line.includes('|') && tableCells.length >= 2) || (inTable && isTableSeparator)) {
+      closeBlockquote()
+      closeList()
+      closeParagraph()
+
+      if (!inTable && !isTableSeparator) {
+        html.push('<table class="md-table"><thead>')
+        appendTableRow(tableCells, 'th')
+        html.push('</thead><tbody>')
+        inTable = true
+        tableHeaderParsed = true
+        continue
+      }
+
+      if (inTable && isTableSeparator) {
+        continue
+      }
+
+      if (inTable && tableHeaderParsed) {
+        appendTableRow(tableCells, 'td')
+        continue
+      }
+    } else {
+      closeTable()
+    }
+
     const headingMatch = line.match(/^(#{1,4})\s+(.+)$/)
     if (headingMatch) {
+      const headingText = headingMatch[2].trim()
+      if (levelAwareIsTrainingDayHeading(headingText)) {
+        closeTrainingDayCard()
+        closeBlockquote()
+        closeList()
+        closeParagraph()
+        html.push('<section class="training-day-card">')
+        inTrainingDayCard = true
+        if (opts.skipFirstDayHeading && !skippedFirstDayHeading) {
+          skippedFirstDayHeading = true
+        } else {
+          const level = Math.min(4, headingMatch[1].length)
+          html.push(`<h${level}>${formatInlineMarkdown(normalizeTrainingDayHeading(headingText))}</h${level}>`)
+        }
+        continue
+      }
+      closeTrainingDayCard()
+      closeBlockquote()
       closeList()
       closeParagraph()
       const level = Math.min(4, headingMatch[1].length)
@@ -837,7 +1078,34 @@ const renderPlanContent = (content = '') => {
       continue
     }
 
+    const plainTrainingDayHeading = parseTrainingDayHeadingLine(line)
+    if (plainTrainingDayHeading) {
+      closeTrainingDayCard()
+      closeBlockquote()
+      closeList()
+      closeParagraph()
+      html.push('<section class="training-day-card">')
+      inTrainingDayCard = true
+      if (opts.skipFirstDayHeading && !skippedFirstDayHeading) {
+        skippedFirstDayHeading = true
+      } else {
+        html.push(`<h3>${formatInlineMarkdown(plainTrainingDayHeading)}</h3>`)
+      }
+      continue
+    }
+
+    if (/^([-*_])\1{2,}$/.test(line)) {
+      closeTrainingDayCard()
+      closeBlockquote()
+      closeList()
+      closeParagraph()
+      html.push('<hr class="md-divider">')
+      continue
+    }
+
     if (/^计划标题[:：]/.test(line)) {
+      closeTrainingDayCard()
+      closeBlockquote()
       closeList()
       closeParagraph()
       html.push(`<h1>${formatInlineMarkdown(line.replace(/^计划标题[:：]\s*/, ''))}</h1>`)
@@ -845,19 +1113,78 @@ const renderPlanContent = (content = '') => {
     }
 
     if (/^计划概述[:：]/.test(line)) {
+      closeTrainingDayCard()
+      closeBlockquote()
       closeList()
       closeParagraph()
       html.push(`<h2>计划概述</h2><p>${formatInlineMarkdown(line.replace(/^计划概述[:：]\s*/, ''))}</p>`)
       continue
     }
 
+    if (/^>\s?/.test(line)) {
+      closeList()
+      if (!inBlockquote) {
+        closeParagraph()
+        html.push('<blockquote>')
+        inBlockquote = true
+      }
+      if (!inParagraph) {
+        html.push('<p>')
+        inParagraph = true
+      } else {
+        html.push('<br>')
+      }
+      html.push(formatInlineMarkdown(line.replace(/^>\s?/, '')))
+      continue
+    }
+
     if (/^[-*]\s+/.test(line)) {
+      closeBlockquote()
       closeParagraph()
       if (!inList) {
+        if (inOrderedList) {
+          html.push('</ol>')
+          inOrderedList = false
+        }
         html.push('<ul>')
         inList = true
       }
-      html.push(`<li>${formatInlineMarkdown(line.replace(/^[-*]\s+/, ''))}</li>`)
+      const itemText = line.replace(/^[-*]\s+/, '').trim()
+      const nextLine = getNextNonEmptyLine(lineIndex)
+      const startsNestedGroup = /[:：]$/.test(itemText) && /^[-*]\s+/.test(nextLine)
+
+      if (inNestedList && !startsNestedGroup) {
+        html.push(`<li class="nested-list-item">${formatInlineMarkdown(itemText)}</li>`)
+        continue
+      }
+
+      if (inNestedList) {
+        html.push('</ul></li>')
+        inNestedList = false
+      }
+
+      if (startsNestedGroup) {
+        html.push(`<li class="list-group-title">${formatInlineMarkdown(itemText)}<ul class="nested-list">`)
+        inNestedList = true
+        continue
+      }
+
+      html.push(`<li>${formatInlineMarkdown(itemText)}</li>`)
+      continue
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      closeBlockquote()
+      closeParagraph()
+      if (!inOrderedList) {
+        if (inList) {
+          html.push('</ul>')
+          inList = false
+        }
+        html.push('<ol>')
+        inOrderedList = true
+      }
+      html.push(`<li>${formatInlineMarkdown(line.replace(/^\d+\.\s+/, ''))}</li>`)
       continue
     }
 
@@ -871,10 +1198,28 @@ const renderPlanContent = (content = '') => {
     html.push(formatInlineMarkdown(line))
   }
 
+  closeTrainingDayCard()
+  closeTable()
+  closeBlockquote()
   closeList()
   closeParagraph()
 
   return html.join('')
+}
+
+const levelAwareIsTrainingDayHeading = (text = '') =>
+  /^训练日\s*[一二三四五六七1234567890]+$/i.test(String(text || '').trim())
+
+const parseTrainingDayHeadingLine = (text = '') => {
+  const normalized = String(text || '').trim()
+  if (!normalized) return ''
+
+  const match = normalized.match(/^(训练日\s*[一二三四五六七1234567890]+)\s*[:：]?\s*(.*)$/i)
+  if (!match) return ''
+
+  const label = normalizeTrainingDayHeading(match[1] || '')
+  const suffix = normalizeTrainingDayHeading(match[2] || '')
+  return suffix ? `${label}：${suffix}` : label
 }
 
 const normalizePlanText = (text = '') =>
@@ -973,11 +1318,7 @@ const extractTableSessions = (text = '') => {
 }
 
 const extractBlockSessions = (text = '') => {
-  const lines = text
-    .split('\n')
-    .map((line) => removeMarkdownFormat(line).trim())
-    .filter(Boolean)
-
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n')
   const sessions = []
   let current = null
 
@@ -997,8 +1338,19 @@ const extractBlockSessions = (text = '') => {
     current = null
   }
 
-  for (const line of lines) {
-    const titleMatch = line.match(sessionTitlePattern)
+  for (const rawLine of lines) {
+    const normalizedLine = removeMarkdownFormat(rawLine).trim()
+    if (!normalizedLine) {
+      if (current) current.summaryLines.push('')
+      continue
+    }
+
+    if (/^第\s*\d+\s*周[:：]?$/.test(normalizedLine) || /^##\s*第\s*\d+\s*周/.test(rawLine.trim())) {
+      pushCurrent()
+      continue
+    }
+
+    const titleMatch = normalizedLine.match(sessionTitlePattern)
     if (titleMatch) {
       pushCurrent()
       current = {
@@ -1014,34 +1366,86 @@ const extractBlockSessions = (text = '') => {
 
     if (!current) continue
 
-    if (/^(训练主题|主题)[:：]/.test(line)) {
-      current.title = line.replace(/^(训练主题|主题)[:：]\s*/, '').trim() || current.title
-      if (!current.focus) current.focus = current.title
+    if (/^(训练主题|主题)[:：]/.test(normalizedLine)) {
+      current.title = normalizedLine.replace(/^(训练主题|主题)[:：]\s*/, '').trim() || current.title
       continue
     }
 
-    if (/^(建议时长|训练时长|时长|训练时间)[:：]/.test(line)) {
-      current.duration = line.replace(/^(建议时长|训练时长|时长|训练时间)[:：]\s*/, '').trim()
+    if (/^(建议时长|训练时长|时长|训练时间)[:：]/.test(normalizedLine)) {
+      current.duration = normalizedLine.replace(/^(建议时长|训练时长|时长|训练时间)[:：]\s*/, '').trim()
       continue
     }
 
-    if (/^(训练重点|重点|主训练)[:：]/.test(line)) {
-      current.focus = line.replace(/^(训练重点|重点|主训练)[:：]\s*/, '').trim()
+    if (/^(恢复建议|恢复|放松建议)[:：]/.test(normalizedLine)) {
+      current.recovery = normalizedLine.replace(/^(恢复建议|恢复|放松建议)[:：]\s*/, '').trim()
       continue
     }
 
-    if (/^(恢复建议|恢复|放松建议)[:：]/.test(line)) {
-      current.recovery = line.replace(/^(恢复建议|恢复|放松建议)[:：]\s*/, '').trim()
+    if (/^(训练重点|重点|主训练)[:：]/.test(normalizedLine)) {
+      current.focus = normalizedLine.replace(/^(训练重点|重点|主训练)[:：]\s*/, '').trim()
+    }
+
+    current.summaryLines.push(rawLine)
+  }
+
+  pushCurrent()
+  return sessions
+}
+
+const extractMarkdownSessions = (text = '') => {
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n')
+  const sessions = []
+  let current = null
+
+  const pushCurrent = () => {
+    if (!current) return
+    const summary = current.lines.join('\n').trim()
+    if (!summary) {
+      current = null
+      return
+    }
+
+    const titleMatch = summary.match(/(?:^|\n)(?:[-*]\s*)?训练主题[:：]\s*(.+)/)
+    const durationMatch = summary.match(/(?:^|\n)(?:[-*]\s*)?(?:建议时长|训练时长|时长|训练时间)[:：]\s*(.+)/)
+    const recoveryMatch = summary.match(/(?:^|\n)(?:[-*]\s*)?(?:恢复建议|恢复|放松建议)[:：]\s*(.+)/)
+    const focusMatch = summary.match(/(?:^|\n)(?:[-*]\s*)?(?:训练重点|重点|主训练)[:：]\s*(.+)/)
+
+    sessions.push({
+      dayLabel: current.dayLabel,
+      title: (titleMatch?.[1] || current.title || current.dayLabel || '').trim(),
+      duration: (durationMatch?.[1] || '').trim(),
+      focus: (focusMatch?.[1] || titleMatch?.[1] || current.title || '').trim(),
+      recovery: (recoveryMatch?.[1] || '').trim(),
+      summary
+    })
+    current = null
+  }
+
+  for (const rawLine of lines) {
+    const trimmedLine = rawLine.trim()
+    const normalizedLine = removeMarkdownFormat(trimmedLine).trim()
+
+    if (/^##\s*第\s*\d+\s*周/.test(trimmedLine) || /^第\s*\d+\s*周[:：]?$/.test(normalizedLine)) {
+      pushCurrent()
       continue
     }
 
-    if (/^(训练内容|内容安排|动作安排)[:：]/.test(line)) {
-      const summaryLine = line.replace(/^(训练内容|内容安排|动作安排)[:：]\s*/, '').trim()
-      if (summaryLine) current.summaryLines.push(summaryLine)
+    const headingMatch = trimmedLine.match(/^#{1,4}\s*(训练日\s*[一二三四五六七1234567]+)\s*(.*)$/i)
+    const plainMatch = !headingMatch ? normalizedLine.match(/^(训练日\s*[一二三四五六七1234567]+)[:：]?\s*(.*)$/i) : null
+    const titleMatch = headingMatch || plainMatch
+
+    if (titleMatch) {
+      pushCurrent()
+      current = {
+        dayLabel: normalizeTrainingDayHeading(titleMatch[1]?.trim() || ''),
+        title: normalizeTrainingDayHeading(titleMatch[2]?.trim() || titleMatch[1]?.trim() || ''),
+        lines: [rawLine]
+      }
       continue
     }
 
-    current.summaryLines.push(line)
+    if (!current) continue
+    current.lines.push(rawLine)
   }
 
   pushCurrent()
@@ -1049,14 +1453,18 @@ const extractBlockSessions = (text = '') => {
 }
 
 const extractPlanSessions = (plan) => {
-  const rawText = normalizePlanText(String(plan?.content || ''))
+  const rawContent = String(plan?.content || '')
+  const rawText = normalizePlanText(rawContent)
   if (!rawText) return []
 
-  const tableSessions = extractTableSessions(rawText)
-  if (tableSessions.length) return tableSessions
+  const markdownSessions = extractMarkdownSessions(rawContent)
+  if (markdownSessions.length) return markdownSessions
 
   const blockSessions = extractBlockSessions(rawText)
   if (blockSessions.length) return blockSessions
+
+  const tableSessions = extractTableSessions(rawText)
+  if (tableSessions.length) return tableSessions
 
   return contentSegments(plan).map((segment, index) => ({
     dayLabel: `第 ${index + 1} 次训练`,
@@ -1073,6 +1481,16 @@ const getRecoveryText = (plan) => {
   if (intensity.includes('高')) return '训练后增加拉伸和补水，第二天注意恢复。'
   if (intensity.includes('中')) return '注意呼吸节奏，并安排轻量恢复。'
   return '保持动作质量，训练后适度放松。'
+}
+
+const getEntryTitle = (session, index) => {
+  const dayLabel = normalizeTrainingDayHeading(session?.dayLabel || '').replace(/[:：]\s*$/, '')
+  const title = normalizeTrainingDayHeading(session?.title || '').replace(/^[：:\s]+/, '').trim()
+
+  if (dayLabel && title && title !== dayLabel) return `${dayLabel}：${title}`
+  if (dayLabel) return dayLabel
+  if (title) return title
+  return `第 ${index + 1} 次训练`
 }
 
 const buildTrainingEntries = (plan) => {
@@ -1095,7 +1513,7 @@ const buildTrainingEntries = (plan) => {
 
     entries.push({
       date: getDateKey(cursor),
-      title: session?.title || `第 ${sessionIndex + 1} 次训练`,
+      title: getEntryTitle(session, sessionIndex),
       duration: session?.duration || `${plan?.metadata?.daily_duration || 30} 分钟`,
       focus: session?.focus || `${plan?.metadata?.method || '综合训练'} · ${plan?.goal || '训练目标'}`,
       recovery: session?.recovery || getRecoveryText(plan),
@@ -1171,7 +1589,7 @@ const loadPlans = async () => {
 }
 
 const syncCurrentPlan = () => {
-  const storedPlanId = Number(localStorage.getItem(ACTIVE_PLAN_KEY))
+  const storedPlanId = Number(localStorage.getItem(getUserActivePlanKey()))
   if (storedPlanId && plans.value.some((plan) => plan.id === storedPlanId)) {
     activePlanId.value = storedPlanId
   } else {
@@ -1205,13 +1623,22 @@ const goCreatePlan = () => {
   router.push({ name: 'TrainingQuestionnaire' })
 }
 
-const openPlanDetail = (planId) => {
-  router.push({ name: 'TrainingPlan', query: { planId } })
+const openPlanDetail = (plan) => {
+  if (!plan) return
+  const detail = typeof plan === 'object'
+    ? normalizePlan(plan)
+    : normalizePlan(plans.value.find((item) => item.id === Number(plan)) || {})
+  if (!detail || !detail.id) return
+  planDetail.value = detail
+}
+
+const closePlanDetail = () => {
+  planDetail.value = null
 }
 
 const switchCurrentPlan = (planId) => {
   activePlanId.value = planId
-  localStorage.setItem(ACTIVE_PLAN_KEY, String(planId))
+  localStorage.setItem(getUserActivePlanKey(), String(planId))
   boardEntry.value = null
 }
 
@@ -1240,10 +1667,14 @@ const closeWeekdayModal = () => {
 }
 
 const toggleWeekday = (day) => {
+  const limit = getPlanWeekdayLimit(weekdayPlan.value)
+  if (!weekdayDraft.value.includes(day) && weekdayDraft.value.length >= limit) return
   weekdayDraft.value = weekdayDraft.value.includes(day)
     ? weekdayDraft.value.filter((item) => item !== day)
     : [...weekdayDraft.value, day]
 }
+
+const isWeekdayDisabled = (day) => !weekdayDraft.value.includes(day) && weekdayDraft.value.length >= getPlanWeekdayLimit(weekdayPlan.value)
 
 const saveWeekdays = async () => {
   if (!weekdayPlan.value || !weekdayDraft.value.length) return
@@ -1253,7 +1684,7 @@ const saveWeekdays = async () => {
       selected_weekdays: [...weekdayDraft.value]
     })
     applyUpdatedPlan(response.plan)
-    localStorage.setItem(ACTIVE_PLAN_KEY, String(weekdayPlan.value.id))
+    localStorage.setItem(getUserActivePlanKey(), String(weekdayPlan.value.id))
   } catch (error) {
     console.error('保存训练日失败:', error)
     applyUpdatedPlan({
@@ -1275,7 +1706,8 @@ const openEditModal = (plan) => {
     weekly_days: plan.metadata?.weekly_days || '',
     daily_duration: plan.metadata?.daily_duration || '',
     intensity: plan.metadata?.intensity || '',
-    content: plan.content || ''
+    content: plan.content || '',
+    selected_weekdays: [...getSelectedWeekdays(plan)]
   }
   showEditModal.value = true
 }
@@ -1285,6 +1717,18 @@ const closeEditModal = () => {
   editTargetPlan.value = null
 }
 
+const toggleEditWeekday = (day) => {
+  const limit = getEditWeekdayLimit()
+  if (!editForm.value.selected_weekdays.includes(day) && editForm.value.selected_weekdays.length >= limit) return
+  editForm.value.selected_weekdays = editForm.value.selected_weekdays.includes(day)
+    ? editForm.value.selected_weekdays.filter((item) => item !== day)
+    : [...editForm.value.selected_weekdays, day]
+}
+
+const isEditWeekdayDisabled = (day) =>
+  !editForm.value.selected_weekdays.includes(day) &&
+  editForm.value.selected_weekdays.length >= getEditWeekdayLimit()
+
 const saveEdit = async () => {
   if (!editTargetPlan.value) return
 
@@ -1292,6 +1736,7 @@ const saveEdit = async () => {
     title: editForm.value.title,
     goal: editForm.value.goal,
     content: editForm.value.content,
+    selected_weekdays: [...editForm.value.selected_weekdays],
     metadata: {
       ...(editTargetPlan.value.metadata || {}),
       method: editForm.value.method,
@@ -1328,9 +1773,9 @@ const removePlan = async (plan) => {
   if (activePlanId.value === plan.id) {
     activePlanId.value = plans.value[0]?.id || null
     if (activePlanId.value) {
-      localStorage.setItem(ACTIVE_PLAN_KEY, String(activePlanId.value))
+      localStorage.setItem(getUserActivePlanKey(), String(activePlanId.value))
     } else {
-      localStorage.removeItem(ACTIVE_PLAN_KEY)
+      localStorage.removeItem(getUserActivePlanKey())
     }
   }
 
@@ -1357,7 +1802,7 @@ watch(
   () => activePlanId.value,
   (value) => {
     if (value) {
-      localStorage.setItem(ACTIVE_PLAN_KEY, String(value))
+      localStorage.setItem(getUserActivePlanKey(), String(value))
     }
   }
 )
@@ -1714,7 +2159,7 @@ const CalendarPanel = defineComponent({
 
 .dashboard-top {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 3fr 2fr;
   gap: 24px;
 }
 
@@ -1897,13 +2342,14 @@ const CalendarPanel = defineComponent({
 .content-body {
   background: var(--bg-primary);
   border-radius: 16px;
-  padding: 20px;
+  padding: 24px;
   border: 1px solid var(--border-light);
 }
 
 .markdown-content {
   color: var(--text-primary);
   line-height: 1.75;
+  max-width: 920px;
 }
 
 .markdown-content :deep(h1),
@@ -1917,18 +2363,58 @@ const CalendarPanel = defineComponent({
 }
 
 .markdown-content :deep(h1) {
-  font-size: 28px;
+  font-size: 30px;
   margin-top: 0;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 113, 227, 0.12);
 }
 
 .markdown-content :deep(h2) {
   font-size: 22px;
-  margin-top: 24px;
+  margin-top: 28px;
+  margin-bottom: 14px;
+  padding-left: 12px;
+  border-left: 4px solid var(--accent-orange);
 }
 
 .markdown-content :deep(h3) {
-  font-size: 18px;
-  margin-top: 20px;
+  font-size: 19px;
+  margin-top: 22px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: rgba(0, 113, 227, 0.05);
+  border: 1px solid rgba(0, 113, 227, 0.1);
+  border-radius: 14px;
+}
+
+.markdown-content :deep(.training-day-card) {
+  margin: 22px 0 26px;
+  padding: 18px 18px 8px;
+  background: linear-gradient(180deg, rgba(0, 113, 227, 0.06) 0%, rgba(255, 255, 255, 0.92) 100%);
+  border: 1px solid rgba(0, 113, 227, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 10px 26px rgba(0, 113, 227, 0.08);
+}
+
+.markdown-content :deep(.training-day-card h3) {
+  margin-top: 0;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(0, 113, 227, 0.14);
+}
+
+.markdown-content :deep(.training-day-card ul),
+.markdown-content :deep(.training-day-card ol) {
+  margin-bottom: 16px;
+}
+
+.markdown-content :deep(.training-day-card p:last-child),
+.markdown-content :deep(.training-day-card ul:last-child),
+.markdown-content :deep(.training-day-card ol:last-child),
+.markdown-content :deep(.training-day-card blockquote:last-child),
+.markdown-content :deep(.training-day-card table:last-child) {
+  margin-bottom: 10px;
 }
 
 .markdown-content :deep(h4) {
@@ -1938,21 +2424,39 @@ const CalendarPanel = defineComponent({
 
 .markdown-content :deep(p) {
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.85;
 }
 
 .markdown-content :deep(ul) {
-  margin: 0 0 14px;
-  padding-left: 20px;
+  margin: 0 0 18px;
+  padding-left: 24px;
+}
+
+.markdown-content :deep(.nested-list) {
+  margin: 12px 0 4px;
+  padding-left: 26px;
 }
 
 .markdown-content :deep(li) {
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.markdown-content :deep(.list-group-title) {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.markdown-content :deep(.nested-list-item) {
+  margin: 0 0 10px;
+  color: rgba(28, 28, 30, 0.9);
 }
 
 .markdown-content :deep(strong) {
   font-weight: 700;
+  color: #173f34;
 }
 
 .markdown-content :deep(code) {
@@ -1960,6 +2464,59 @@ const CalendarPanel = defineComponent({
   border-radius: 6px;
   background: rgba(0, 113, 227, 0.08);
   font-size: 12px;
+}
+
+.markdown-content :deep(blockquote) {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent-blue);
+  background: rgba(0, 113, 227, 0.05);
+  border-radius: 0 12px 12px 0;
+}
+
+.markdown-content :deep(ol) {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+
+.markdown-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.markdown-content :deep(th),
+.markdown-content :deep(td) {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-light);
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.markdown-content :deep(th) {
+  background: rgba(0, 113, 227, 0.06);
+  font-weight: 700;
+}
+
+.markdown-content :deep(tr:last-child td) {
+  border-bottom: none;
+}
+
+.markdown-content :deep(.md-divider) {
+  border: none;
+  height: 1px;
+  margin: 18px 0 22px;
+  background: linear-gradient(90deg, transparent, rgba(0, 113, 227, 0.18), transparent);
+}
+
+.entry-markdown-wrapper {
+  margin-top: 8px;
 }
 
 .entry-markdown {
@@ -1972,10 +2529,12 @@ const CalendarPanel = defineComponent({
 
 .entry-markdown :deep(h2) {
   font-size: 18px;
+  margin-top: 22px;
 }
 
 .entry-markdown :deep(h3) {
   font-size: 16px;
+  padding: 8px 12px;
 }
 
 .entry-markdown :deep(h4) {
@@ -1985,6 +2544,7 @@ const CalendarPanel = defineComponent({
 .entry-markdown :deep(p),
 .entry-markdown :deep(li) {
   font-size: 14px;
+  line-height: 1.75;
 }
 
 .card-section-divider {
@@ -2028,6 +2588,13 @@ const CalendarPanel = defineComponent({
   margin-bottom: 20px;
 }
 
+.history-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
 .card-header h3 {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 20px;
@@ -2041,6 +2608,28 @@ const CalendarPanel = defineComponent({
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
+}
+
+.current-plan-card,
+.history-card {
+  min-height: 220px;
+}
+
+.history-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-nav-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.history-footer {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .card-label {
@@ -2095,8 +2684,17 @@ const CalendarPanel = defineComponent({
 /* ==================== 操作按钮组 ==================== */
 .plan-actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.plan-actions .action-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .action-group {
@@ -2187,6 +2785,26 @@ const CalendarPanel = defineComponent({
   margin: 6px 0 0;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.board-entry-close,
+.modal-close {
+  background: #ffffff;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.board-entry-close svg,
+.modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.board-entry-close:hover,
+.modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
 }
 
 .empty-icon {
@@ -2504,16 +3122,6 @@ const CalendarPanel = defineComponent({
   color: var(--accent-orange);
 }
 
-.modal-close {
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-.modal-close:hover {
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  border-radius: 12px;
-}
 
 .modal-body {
   padding: 32px;
@@ -2545,6 +3153,10 @@ const CalendarPanel = defineComponent({
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 10px;
+}
+
+.edit-weekday-grid {
+  margin-top: 4px;
 }
 
 .weekday-option {
@@ -2580,6 +3192,11 @@ const CalendarPanel = defineComponent({
 .weekday-option:hover {
   border-color: var(--accent-orange);
   background: rgba(255, 107, 74, 0.03);
+}
+
+.weekday-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .weekday-option.selected {
@@ -2634,6 +3251,12 @@ const CalendarPanel = defineComponent({
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.form-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .label-text {
@@ -2956,5 +3579,6 @@ const CalendarPanel = defineComponent({
     width: 40px;
     height: 40px;
   }
+
 }
 </style>

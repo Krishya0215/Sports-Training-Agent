@@ -136,6 +136,7 @@ class AuthService:
                 "message": "登录成功",
                 "token": token,
                 "user": {
+                    "id": user["id"],
                     "username": user["username"],
                     "email": user_email,
                     "is_first_login": bool(user.get("is_first_login", False)),
@@ -177,6 +178,7 @@ class AuthService:
             return None
         
         return {
+            "id": user["id"],
             "username": user["username"],
             "email": user["email"],
             "profile_completed": bool(user.get("profile_completed", False))

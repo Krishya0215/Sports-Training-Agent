@@ -1,13 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    component: Home,
-    meta: { requiresAuth: true }
+    redirect: () => {
+      const authStore = useAuthStore()
+      return authStore.isAuthenticated ? '/chat' : '/login'
+    }
   },
   {
     path: '/login',
@@ -73,7 +73,7 @@ const routes = [
     path: '/memory',
     name: 'Memory',
     component: () => import('../views/Memory.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   // 重定向到登录页
   {
@@ -96,6 +96,7 @@ router.beforeEach(async (to, from, next) => {
 
   const isAuthenticated = authStore.isAuthenticated
   const isFirstLogin = authStore.isFirstLogin && !authStore.profileCompleted
+  const isAdmin = authStore.user?.role === 'admin'
 
   // 检查是否需要认证
   if (to.meta.requiresAuth && !isAuthenticated) {
@@ -109,20 +110,26 @@ router.beforeEach(async (to, from, next) => {
     if (isFirstLogin) {
       next('/profile-setup')
     } else {
-      next('/')
+      next('/chat')
     }
     return
   }
 
   // 检查是否需要填写资料
   if (to.meta.requiresProfileSetup && !isFirstLogin) {
-    next('/')
+    next('/chat')
     return
   }
 
   // 首次登录且资料未完成，强制跳转到资料填写页（除非已在资料填写页）
   if (isAuthenticated && isFirstLogin && to.name !== 'ProfileSetup') {
     next('/profile-setup')
+    return
+  }
+
+  // 检查管理员权限
+  if (to.meta.requiresAdmin && !isAdmin) {
+    next('/chat')
     return
   }
 

@@ -54,18 +54,32 @@ class ChatModelFactory(BaseModelFactory):
             if not os.getenv("DASHSCOPE_API_KEY"):
                 print("⚠️  警告: DASHSCOPE_API_KEY 未设置，聊天模型将在需要时延迟初始化")
                 return None
-            return ChatTongyi(
-                model=rag_conf["chat_model_name"],
-                temperature=0.7,
-                top_p=0.9,
-                max_tokens=2048,
-                # 添加请求超时和重试参数
-                request_timeout=60,
-                max_retries=3
-            )
+            return build_chat_model()
         except Exception as e:
             print(f"⚠️  警告: 聊天模型初始化失败 - {e}")
             return None
+
+
+def build_chat_model(
+    *,
+    temperature: float = 0.7,
+    top_p: float = 0.9,
+    max_tokens: int = 2048,
+    request_timeout: int = 60,
+    max_retries: int = 3
+) -> Optional[BaseChatModel]:
+    """按需构建聊天模型，便于为不同场景设置更轻量的推理参数"""
+    if not os.getenv("DASHSCOPE_API_KEY"):
+        return None
+
+    return ChatTongyi(
+        model=rag_conf["chat_model_name"],
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        request_timeout=request_timeout,
+        max_retries=max_retries
+    )
 
 
 try:
