@@ -3351,13 +3351,49 @@ const CalendarPanel = defineComponent({
 }
 
 :deep(.calendar-day.today) {
-  border-color: var(--accent-orange);
-  background: rgba(255, 107, 74, 0.05);
+  background: transparent;
+  border-color: var(--border-light);
+  color: inherit;
+}
+
+:deep(.calendar-day.today .day-number) {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #000000;
+  color: #ffffff;
+}
+
+:deep(.calendar-day.today .day-badge),
+:deep(.calendar-day.today .day-action) {
+  color: #ffffff;
+}
+
+:deep(.calendar-day.today .day-action) {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 :deep(.calendar-day.active) {
-  background: linear-gradient(135deg, rgba(255, 107, 74, 0.1), rgba(255, 159, 110, 0.05));
+  background: transparent;
   border-color: var(--accent-orange);
+}
+
+:deep(.calendar-day.active .day-number) {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 107, 74, 0.12);
+  color: var(--text-primary);
+}
+
+:deep(.calendar-day.active.today .day-number) {
+  background: #000000;
 }
 
 :deep(.calendar-day-top) {
@@ -3383,21 +3419,23 @@ const CalendarPanel = defineComponent({
 }
 
 :deep(.day-action) {
-  width: 100%;
+  width: 70%;
   padding: 10px;
   border-radius: 10px;
   border: none;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: #e4f0ff;
+  color: #0f3f7d;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-left: 15%;
+  margin-top: 5%;
 }
 
 :deep(.day-action:hover) {
-  background: var(--primary-gradient);
-  color: white;
+  background: #c8e0ff;
+  color: #0f3f7d;
   transform: scale(1.02);
 }
 

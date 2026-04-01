@@ -53,7 +53,7 @@
           <div v-if="!messages.length" class="empty-state">
             <div class="empty-badge">AI</div>
             <h3>开始和 AI 教练对话吧！</h3>
-            <p>询问有关训练计划、运动恢复方面的问题，AI教练会提供帮助。</p>
+            <!-- <p>询问有关训练计划、运动恢复方面的问题，AI教练会提供帮助。</p> -->
             <div class="quick-suggestions">
               <button
                 v-for="suggestion in suggestions"
