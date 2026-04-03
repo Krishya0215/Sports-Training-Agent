@@ -777,7 +777,8 @@ class UserDatabase:
         user_id: int,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        training_type: Optional[str] = None
+        training_type: Optional[str] = None,
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -795,6 +796,10 @@ class UserDatabase:
             params.append(training_type)
 
         query += " ORDER BY date DESC, id DESC"
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+
         cursor.execute(query, tuple(params))
         rows = cursor.fetchall()
         conn.close()

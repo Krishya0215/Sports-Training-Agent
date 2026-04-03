@@ -434,7 +434,7 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="training-duration">训练时长</label>
+                <label class="form-label" for="training-duration">训练时长（分钟）</label>
                 <input
                   id="training-duration"
                   v-model.number="trainingRecordData.duration"
@@ -519,35 +519,21 @@
           <div>
             <p class="coach-tag">饮食记录</p>
             <h2>记录今天吃了什么</h2>
-            <p class="modal-copy">记录餐别、食物和大致营养信息，后续更容易结合训练安排做饮食建议。</p>
+            <p class="modal-copy">记录餐别和食物内容即可，系统会结合训练安排继续分析你的饮食情况。</p>
           </div>
         </div>
 
         <form @submit.prevent="submitDietRecord">
           <section class="modal-section">
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="meal-type">餐别</label>
-                <select id="meal-type" v-model="dietRecordData.meal_type" class="form-input">
-                  <option value="">请选择</option>
-                  <option value="早餐">早餐</option>
-                  <option value="午餐">午餐</option>
-                  <option value="晚餐">晚餐</option>
-                  <option value="加餐">加餐</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="diet-calories">热量</label>
-                <input
-                  id="diet-calories"
-                  v-model.number="dietRecordData.calories"
-                  class="form-input"
-                  type="number"
-                  min="0"
-                  placeholder="kcal"
-                >
-              </div>
+            <div class="form-group">
+              <label class="form-label" for="meal-type">餐别</label>
+              <select id="meal-type" v-model="dietRecordData.meal_type" class="form-input">
+                <option value="">请选择</option>
+                <option value="早餐">早餐</option>
+                <option value="午餐">午餐</option>
+                <option value="晚餐">晚餐</option>
+                <option value="加餐">加餐</option>
+              </select>
             </div>
 
             <div class="form-group">
@@ -559,19 +545,6 @@
                 rows="4"
                 placeholder="例如：鸡胸肉沙拉、米饭半碗、无糖酸奶"
               />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="diet-protein">蛋白质</label>
-              <input
-                id="diet-protein"
-                v-model.number="dietRecordData.protein"
-                class="form-input"
-                type="number"
-                min="0"
-                step="0.1"
-                placeholder="克"
-              >
             </div>
 
             <div class="form-group">
@@ -603,8 +576,8 @@
         <div class="record-modal-head">
           <div>
             <p class="coach-tag">体重记录</p>
-            <h2>记录体重与围度变化</h2>
-            <p class="modal-copy">把体重、体脂和围度记下来，后面更容易判断减脂、增肌或维持阶段的趋势。</p>
+            <h2>记录体重变化</h2>
+            <p class="modal-copy">记录体重即可，体脂率可以选填，方便后续观察减脂、增肌或维持阶段的趋势。</p>
           </div>
         </div>
 
@@ -625,7 +598,7 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="body-fat-value">体脂率</label>
+                <label class="form-label" for="body-fat-value">体脂率（选填）</label>
                 <input
                   id="body-fat-value"
                   v-model.number="weightRecordData.body_fat"
@@ -636,50 +609,6 @@
                   step="0.1"
                   placeholder="%"
                 >
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">围度信息</label>
-              <div class="measure-inputs">
-                <div>
-                  <label for="chest-circumference">胸围</label>
-                  <input
-                    id="chest-circumference"
-                    v-model.number="weightRecordData.chest_circumference"
-                    class="form-input"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="cm"
-                  >
-                </div>
-
-                <div>
-                  <label for="waist-circumference">腰围</label>
-                  <input
-                    id="waist-circumference"
-                    v-model.number="weightRecordData.waist_circumference"
-                    class="form-input"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="cm"
-                  >
-                </div>
-
-                <div>
-                  <label for="hip-circumference">臀围</label>
-                  <input
-                    id="hip-circumference"
-                    v-model.number="weightRecordData.hip_circumference"
-                    class="form-input"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="cm"
-                  >
-                </div>
               </div>
             </div>
 
@@ -800,8 +729,6 @@ const trainingRecordData = ref({
 const dietRecordData = ref({
   meal_type: '',
   food_content: '',
-  calories: '',
-  protein: '',
   notes: ''
 })
 
@@ -809,9 +736,6 @@ const dietRecordData = ref({
 const weightRecordData = ref({
   weight: '',
   body_fat: '',
-  chest_circumference: '',
-  waist_circumference: '',
-  hip_circumference: '',
   notes: ''
 })
 
@@ -2240,8 +2164,6 @@ const resetDietRecordForm = () => {
   dietRecordData.value = {
     meal_type: '',
     food_content: '',
-    calories: '',
-    protein: '',
     notes: ''
   }
 }
@@ -2259,8 +2181,6 @@ const submitDietRecord = async () => {
       date: new Date().toISOString().split('T')[0],
       meal_type: dietRecordData.value.meal_type,
       food_content: dietRecordData.value.food_content,
-      calories: dietRecordData.value.calories,
-      protein: dietRecordData.value.protein,
       notes: dietRecordData.value.notes
     })
 
@@ -2288,9 +2208,6 @@ const resetWeightRecordForm = () => {
   weightRecordData.value = {
     weight: '',
     body_fat: '',
-    chest_circumference: '',
-    waist_circumference: '',
-    hip_circumference: '',
     notes: ''
   }
 }
@@ -2304,15 +2221,17 @@ const submitWeightRecord = async () => {
   savingWeightRecord.value = true
 
   try {
-    await api.post('/weight/records', {
+    const payload = {
       date: new Date().toISOString().split('T')[0],
       weight: weightRecordData.value.weight,
-      body_fat: weightRecordData.value.body_fat,
-      chest_circumference: weightRecordData.value.chest_circumference,
-      waist_circumference: weightRecordData.value.waist_circumference,
-      hip_circumference: weightRecordData.value.hip_circumference,
       notes: weightRecordData.value.notes
-    })
+    }
+
+    if (weightRecordData.value.body_fat !== '' && weightRecordData.value.body_fat !== null && weightRecordData.value.body_fat !== undefined) {
+      payload.body_fat = weightRecordData.value.body_fat
+    }
+
+    await api.post('/weight/records', payload)
 
     alert('体重记录已保存！')
     closeWeightRecordModal()
