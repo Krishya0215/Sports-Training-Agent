@@ -1,0 +1,92 @@
+graph TB
+    %% 多智能体协同系统架构 - Mermaid格式
+
+    Input[用户请求] --> Router
+
+    subgraph MultiAgent["多智能体协同系统 (MultiAgentSystem)"]
+        Router[请求路由器<br/>Request Router]
+        Workflow[工作流引擎<br/>StateGraph Workflow]
+        Planner[执行计划构建器]
+
+        subgraph Coaches["教练智能体池"]
+            Planning[训练规划教练<br/>Planning Coach]
+            Technique[技术指导教练<br/>Technique Coach]
+            Recovery[运动康复教练<br/>Recovery Coach]
+
+            Planning -- 计划制定 --> P1[周期化安排]
+            Planning -- 目标导向 --> P2[目标导向规划]
+
+            Technique -- 动作指导 --> T1[姿势分析]
+            Technique -- 技术修正 --> T2[技术反馈]
+
+            Recovery -- 损伤预防 --> R1[风险评估]
+            Recovery -- 恢复建议 --> R2[康复方案]
+        end
+
+        Synthesizer[综合输出器<br/>Synthesizer]
+    end
+
+    subgraph External["外部服务"]
+        LLM[大语言模型<br/>通义千问]
+        RAG[高级检索器<br/>RAG]
+        Memory[记忆服务<br/>MemoryService]
+    end
+
+    Output[综合响应] --> OutputResult
+
+    %% 流程连接
+    Router -->|路由结果| Workflow
+    Workflow -->|构建执行计划| Planner
+    Planner -->|批次执行| Planning
+    Planner -->|批次执行| Technique
+    Planner -->|批次执行| Recovery
+
+    Planning -->|规划结果| Workflow
+    Technique -->|技术建议| Workflow
+    Recovery -->|康复建议| Workflow
+
+    Workflow -->|汇总结果| Synthesizer
+    Synthesizer --> Output
+
+    %% 外部服务连接
+    Router -->|获取用户画像| Memory
+    Workflow -->|更新记忆| Memory
+    Workflow -->|检索相关知识| RAG
+
+    Planning -->|调用LLM| LLM
+    Technique -->|调用LLM| LLM
+    Recovery -->|调用LLM| LLM
+    Synthesizer -->|调用LLM| LLM
+    Router -->|问题分类| LLM
+
+    %% 样式
+    classDef inputStyle fill:#fff2cc,stroke:#d6b656,stroke-width:2px
+    classDef routerStyle fill:#dae8fc,stroke:#6c8ebf,stroke-width:2px
+    classDef workflowStyle fill:#d5e8d4,stroke:#82b366,stroke-width:2px
+    classDef planningStyle fill:#e1d5e7,stroke:#9673a6,stroke-width:2px
+    classDef coachStyle fill:#ffe6cc,stroke:#d79b00,stroke-width:2px
+    classDef synthStyle fill:#f5f5f5,stroke:#666666,stroke-width:2px
+    classDef externalStyle fill:#ffffff,stroke:#999999,stroke-width:2px,dasharray: 5 5
+    classDef planningCoachStyle fill:#b3e5fc,stroke:#0984e3,stroke-width:2px
+    classDef techniqueCoachStyle fill:#c8e6c9,stroke:#27ae60,stroke-width:2px
+    classDef recoveryCoachStyle fill:#ffccbc,stroke:#e67e22,stroke-width:2px
+
+    class Input inputStyle
+    class Router routerStyle
+    class Workflow workflowStyle
+    class Planner planningStyle
+    class Synthesizer synthStyle
+    class LLM,RAG,Memory externalStyle
+    class Planning planningCoachStyle
+    class Technique techniqueCoachStyle
+    class Recovery recoveryCoachStyle
+
+    %% 执行顺序说明
+    note1[执行顺序:
+    1. 问题分类
+    2. 知识检索
+    3. 训练规划(第一批)
+    4. 技术+康复(第二批并行)
+    5. 综合整合]
+
+    note1 -.-> Workflow

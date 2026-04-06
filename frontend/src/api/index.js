@@ -36,7 +36,31 @@ api.interceptors.response.use(
 )
 
 export default {
-  async queryStream(question, onChunk, onComplete, onError, options = {}) {
+  /**
+   * 发起流式查询请求
+   * 支持两种接口：
+   * 1. 旧接口: queryStream(question, onChunk, onComplete, onError, options)
+   * 2. 新接口: queryStream(question, handlers, onComplete, onError, options)
+   *    handlers = { thinking: fn, answer: fn, scheduler: fn, progress_log: fn }
+   */
+  async queryStream(question, onChunkOrHandlers, onComplete, onError, options = {}) {
+    // 检测是否使用新接口（handlers 对象）
+    const isHandlersObject = typeof onChunkOrHandlers === 'object' && onChunkOrHandlers !== null
+
+    // 统一处理函数
+    const handleChunk = (chunk, type, data) => {
+      if (isHandlersObject) {
+        // 新接口：根据 type 调用对应的 handler
+        const handler = onChunkOrHandlers[type]
+        if (handler) {
+          handler(chunk, data)
+        }
+      } else {
+        // 旧接口：直接调用 onChunk
+        onChunkOrHandlers(chunk, type, data)
+      }
+    }
+
     try {
       const token = localStorage.getItem('token')
       const headers = {
@@ -46,14 +70,22 @@ export default {
         headers.Authorization = `Bearer ${token}`
       }
 
+      const requestBody = {
+        question,
+        use_multi_agent: Boolean(options.useMultiAgent),
+        user_profile: options.userProfile || null,
+        conversation_id: options.conversationId || null
+      }
+
+      // 添加附件参数
+      if (options.attachments && options.attachments.length > 0) {
+        requestBody.attachments = options.attachments.map(a => a.assetId)
+      }
+
       const response = await fetch('/api/query', {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          question,
-          use_multi_agent: Boolean(options.useMultiAgent),
-          user_profile: options.userProfile || null
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
@@ -100,7 +132,7 @@ export default {
               if (type === 'answer') answerCompleted = true
               onComplete(type, data)
             } else {
-              onChunk(data.content || '', type, data)
+              handleChunk(data.content || '', type, data)
             }
           } catch (_e) {
             continue
@@ -158,6 +190,24 @@ export default {
 
   getKnowledgeStats() {
     return api.get('/knowledge/stats')
+  },
+
+  getKnowledgeDocuments() {
+    return api.get('/knowledge/documents')
+  },
+
+  uploadKnowledgeDocument(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/knowledge/documents/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  },
+
+  deleteKnowledgeDocument(docId) {
+    return api.delete(`/knowledge/documents/${docId}`)
   },
 
   clearWorkingMemory() {

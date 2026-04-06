@@ -57,6 +57,29 @@ def save_md5(md5_str: str):
     with open(md5_file, "a", encoding="utf-8") as f:
         f.write(md5_str + "\n")
 
+def remove_md5(md5_str: str) -> bool:
+    """从md5文件中删除指定的md5值"""
+    md5_file = get_abs_path(chroma_conf["md5_file"])
+
+    if not os.path.exists(md5_file):
+        return False
+
+    try:
+        with open(md5_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # 过滤掉要删除的md5值
+        new_lines = [line for line in lines if line.strip() != md5_str]
+
+        # 重写文件
+        with open(md5_file, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+
+        return True
+    except Exception as e:
+        logger.error(f"【md5删除错误】{e}")
+        return False
+
 def listdir_with_allowed_type(path: str, allowed_types: tuple[str]):
     """
     列出指定目录下的文件，并筛选出指定类型的文件

@@ -180,6 +180,14 @@
                   <span class="loading-dots">●●●</span>
                 </p>
 
+                <!-- 显示附件 -->
+                <div v-if="message.attachments && message.attachments.length" class="message-attachments">
+                  <div v-for="attachment in message.attachments" :key="attachment.assetId" class="message-attachment">
+                    <span class="attachment-icon-small">{{ attachment.assetType === 'image' ? '🖼️' : '📄' }}</span>
+                    <span class="attachment-name-small">{{ attachment.name }}</span>
+                  </div>
+                </div>
+
                 <div v-if="message.planCard" class="plan-card">
                   <div class="plan-card-head">
                     <div>
@@ -274,17 +282,42 @@
         </div>
 
         <footer class="input-bar">
-          <textarea
-            ref="inputRef"
-            v-model="inputMessage"
-            rows="1"
-            placeholder="输入你想问AI 教练的问题.."
-            @keydown.enter.prevent="handleEnter"
-          />
-          <button type="button" class="send-btn" :disabled="loading || !inputMessage.trim()" @click="sendMessage()">
+          <div class="input-wrapper">
+            <button type="button" class="attach-btn" @click="triggerFileUpload" :disabled="loading" title="添加附件">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/*,.pdf,.doc,.docx,.txt,.md"
+              multiple
+              style="display: none"
+              @change="handleFileSelect"
+            />
+            <textarea
+              ref="inputRef"
+              v-model="inputMessage"
+              rows="1"
+              placeholder="输入你想问AI 教练的问题.."
+              @keydown.enter.prevent="handleEnter"
+            />
+          </div>
+          <button type="button" class="send-btn" :disabled="loading || (!inputMessage.trim() && !attachments.length)" @click="sendMessage()">
             发送
           </button>
         </footer>
+
+        <!-- 附件预览区域 -->
+        <div v-if="attachments.length" class="attachments-preview">
+          <div v-for="attachment in attachments" :key="attachment.tempId" class="attachment-item">
+            <span class="attachment-icon">{{ attachment.assetType === 'image' ? '🖼️' : '📄' }}</span>
+            <span class="attachment-name">{{ attachment.name }}</span>
+            <button type="button" class="attachment-remove" @click="removeAttachment(attachment.tempId)">✕</button>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -687,8 +720,13 @@ const inputMessage = ref('')
 const loading = ref(false)
 const messagesContainer = ref(null)
 const inputRef = ref(null)
+const fileInputRef = ref(null)
 const pendingPlanContext = ref(null)
 const enableMultiAgent = ref(true)
+
+// 附件相关状态
+const attachments = ref([])
+const uploadingAttachments = ref(false)
 
 const showPlanPreviewModal = ref(false)
 const previewPlan = ref(null)
@@ -1599,13 +1637,28 @@ const extractTrainingSummary = (content = '') => {
   return cleanedText.length > 80 ? cleanedText.slice(0, 80) + '...' : cleanedText
 }
 
-const updateCurrentConversation = (question, assistantMessage) => {
+const updateCurrentConversation = (question, assistantMessage, currentAttachments = []) => {
   if (currentChat.value !== null && chatHistory.value[currentChat.value]) {
     const target = chatHistory.value[currentChat.value]
+
+    // 构建用户消息，包含附件信息
+    const userMessage = normalizeMessage({
+      role: 'user',
+      content: question,
+      timestamp: new Date()
+    })
+    if (currentAttachments.length > 0) {
+      userMessage.attachments = currentAttachments.map(a => ({
+        assetId: a.assetId,
+        assetType: a.assetType,
+        name: a.name
+      }))
+    }
+
     target.conversation = sanitizeConversation(
       [
         ...(target.conversation || []),
-        normalizeMessage({ role: 'user', content: question, timestamp: new Date() }),
+        userMessage,
         assistantMessage
       ],
       question,
@@ -1702,6 +1755,65 @@ const shouldUseMultiAgentQuery = (question, planContext = null) => {
   return multiAgentKeywords.some((keyword) => normalizedQuestion.includes(keyword))
 }
 
+// 文件上传相关函数
+const triggerFileUpload = () => {
+  fileInputRef.value?.click()
+}
+
+const handleFileSelect = async (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+
+  uploadingAttachments.value = true
+  const token = localStorage.getItem('token')
+
+  try {
+    for (const file of files) {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('description', '')
+
+      const response = await fetch('http://localhost:8000/api/chat/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || '上传失败')
+      }
+
+      const result = await response.json()
+      attachments.value.push({
+        tempId: Date.now() + Math.random(),
+        assetId: result.asset_id,
+        assetType: result.asset_type,
+        name: result.filename,
+        description: result.description
+      })
+    }
+  } catch (error) {
+    console.error('文件上传失败:', error)
+    alert('文件上传失败: ' + error.message)
+  } finally {
+    uploadingAttachments.value = false
+    // 清空文件选择器，允许重复选择同一文件
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
+    }
+  }
+}
+
+const removeAttachment = (tempId) => {
+  const index = attachments.value.findIndex(a => a.tempId === tempId)
+  if (index !== -1) {
+    attachments.value.splice(index, 1)
+  }
+}
+
 const sendMessage = async (text = null, options = {}) => {
   const question = text || inputMessage.value.trim()
   const planContext = options.planContext || pendingPlanContext.value
@@ -1729,6 +1841,7 @@ const sendMessage = async (text = null, options = {}) => {
     let answerContent = ''
     let schedulerInfo = null
     let progressLogs = []
+    const currentAttachments = [...attachments.value] // 保存当前附件列表
 
     await api.queryStream(
       question,
@@ -1769,10 +1882,13 @@ const sendMessage = async (text = null, options = {}) => {
           isSchedulerExpanded: messages.value[assistantMessageIndex]?.isSchedulerExpanded ?? true,
           timestamp: new Date()
         })
-        
+
         messages.value[assistantMessageIndex] = assistantMessage
-        updateCurrentConversation(question, assistantMessage)
-        
+        updateCurrentConversation(question, assistantMessage, currentAttachments)
+
+        // 清空附件
+        attachments.value = []
+
         // 如果存在planContext或者内容看起来像训练计划，则生成卡片
         if (shouldCreateTrainingPlan(answerContent, planContext || null)) {
           // 异步处理plan生成，不阻塞消息流
@@ -1793,7 +1909,8 @@ const sendMessage = async (text = null, options = {}) => {
       },
       {
         useMultiAgent,
-        userProfile
+        userProfile,
+        attachments: currentAttachments
       }
     )
 
@@ -3012,6 +3129,43 @@ watch(
   align-items: end;
 }
 
+.input-wrapper {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  position: relative;
+}
+
+.attach-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  border: 1px solid rgba(23, 63, 52, 0.12);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.attach-btn:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+.attach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attach-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
 .input-bar textarea {
   min-height: 56px;
   max-height: 180px;
@@ -3437,6 +3591,85 @@ watch(
   }
 }
 
+/* 附件预览区域样式 */
+.attachments-preview {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--color-bg);
+  border: 1px solid rgba(23, 63, 52, 0.12);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.attachment-icon {
+  font-size: 16px;
+}
+
+.attachment-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.attachment-remove:hover {
+  background: rgba(23, 63, 52, 0.1);
+  color: var(--color-text-primary);
+}
+
+/* 消息中的附件样式 */
+.message-attachments {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.message-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(23, 63, 52, 0.08);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.attachment-icon-small {
+  font-size: 14px;
+}
+
+.attachment-name-small {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 1024px) {
   .chat-shell {
     grid-template-columns: 1fr;
@@ -3468,6 +3701,14 @@ watch(
 
   .input-bar {
     grid-template-columns: 1fr;
+  }
+
+  .input-wrapper {
+    width: 100%;
+  }
+
+  .input-bar .send-btn {
+    width: 100%;
   }
 }
 

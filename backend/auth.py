@@ -48,7 +48,7 @@ class AuthService:
         return True, ""
     
     @staticmethod
-    def register(username: str, email: str, password: str) -> Dict:
+    def register(username: str, email: str, password: str, role: str = "user") -> Dict:
         """
         用户注册
         
@@ -56,6 +56,7 @@ class AuthService:
             username: 用户名
             email: 邮箱
             password: 密码
+            role: 用户角色
             
         Returns:
             注册结果
@@ -79,13 +80,14 @@ class AuthService:
         
         # 创建用户
         password_hash = AuthService.hash_password(password)
-        if db.create_user(username, email, password_hash):
+        if db.create_user(username, email, password_hash, role):
             return {
                 "success": True,
                 "message": "注册成功",
                 "user": {
                     "username": username,
-                    "email": email
+                    "email": email,
+                    "role": role
                 }
             }
         else:
@@ -139,6 +141,7 @@ class AuthService:
                     "id": user["id"],
                     "username": user["username"],
                     "email": user_email,
+                    "role": user.get("role", "user"),
                     "is_first_login": bool(user.get("is_first_login", False)),
                     "profile_completed": bool(user.get("profile_completed", False))
                 }
@@ -181,6 +184,7 @@ class AuthService:
             "id": user["id"],
             "username": user["username"],
             "email": user["email"],
+            "role": user.get("role", "user"),
             "profile_completed": bool(user.get("profile_completed", False))
         }
     
@@ -311,7 +315,14 @@ def init_test_users():
         {
             "username": "testuser",
             "email": "test@example.com",
-            "password": "123456"
+            "password": "123456",
+            "role": "user"
+        },
+        {
+            "username": "admin",
+            "email": "admin@example.com",
+            "password": "admin123",
+            "role": "admin"
         }
     ]
     
@@ -321,7 +332,8 @@ def init_test_users():
             AuthService.register(
                 username=user["username"],
                 email=user["email"],
-                password=user["password"]
+                password=user["password"],
+                role=user["role"]
             )
             # 标记为已完成资料
             db.update_profile_status(user["email"], completed=True)

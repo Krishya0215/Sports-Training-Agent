@@ -1,0 +1,110 @@
+@startuml 多智能体协同系统架构图
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+
+title <size:18>多智能体协同系统详细架构</size>
+
+package "多智能体协同系统\n(MultiAgentSystem)" as mas #FCE4EC {
+
+    component "请求路由器\n(Request Router)" as router {
+        [问题分类器]
+        [调度信号提取]
+        [教练选择器]
+    }
+
+    component "工作流引擎\n(StateGraph Workflow)" as workflow {
+        [状态管理]
+        [节点调度]
+        [并行执行控制]
+    }
+
+    component "教练智能体池" as coaches {
+        package "训练规划教练\n(Planning Coach)" as planning #B3E5FC {
+            component "计划制定" as p1
+            component "周期化安排" as p2
+            component "目标导向规划" as p3
+        }
+
+        package "技术指导教练\n(Technique Coach)" as technique #C8E6C9 {
+            component "动作指导" as t1
+            component "姿势分析" as t2
+            component "技术修正" as t3
+        }
+
+        package "运动康复教练\n(Recovery Coach)" as recovery #FFCCBC {
+            component "损伤预防" as r1
+            component "恢复建议" as r2
+            component "风险规避" as r3
+        }
+    }
+
+    component "综合输出器\n(Synthesizer)" as synthesizer {
+        [多教练意见整合]
+        [结构化输出]
+        [格式优化]
+    }
+
+    component "执行计划构建器" as planner {
+        [批次划分]
+        [依赖管理]
+        [并行策略]
+    }
+}
+
+' 外部依赖
+cloud "大语言模型\n(通义千问)" as llm #FFF8E1
+
+component "高级检索器\n(RAG)" as retriever #F3E5F5
+
+component "记忆服务\n(MemoryService)" as memory #E0F7FA
+
+' 输入输出
+interface "用户请求" as input
+interface "综合响应" as output
+
+' 流程连接
+input --> router : 用户提问
+router --> workflow : 路由结果
+workflow --> planner : 构建执行计划
+planner --> coaches : 批次执行
+planning --> workflow : 计划结果
+technique --> workflow : 技术建议
+recovery --> workflow : 康复建议
+workflow --> synthesizer : 汇总结果
+synthesizer --> output : 最终响应
+
+' 知识检索
+workflow --> retriever : 检索相关知识
+retriever --> workflow : 返回文档
+
+' 记忆获取
+router --> memory : 获取用户画像
+workflow --> memory : 更新记忆
+
+' LLM调用
+p1 --> llm
+p2 --> llm
+p3 --> llm
+t1 --> llm
+t2 --> llm
+t3 --> llm
+r1 --> llm
+r2 --> llm
+r3 --> llm
+synthesizer --> llm
+router --> llm
+
+' 执行顺序
+note right of workflow
+  执行顺序:
+  1. 问题分类
+  2. 知识检索
+  3. 训练规划(第一批)
+  4. 技术+康复(第二批并行)
+  5. 综合整合
+end note
+
+@enduml

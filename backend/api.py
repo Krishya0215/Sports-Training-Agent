@@ -2,7 +2,7 @@
 运动训练知识问答系统 - FastAPI后端接口
 为Vue前端提供RESTful API
 """
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -13,6 +13,9 @@ from pathlib import Path
 import json
 import asyncio
 import threading
+import os
+import shutil
+import uuid
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -57,6 +60,8 @@ class QueryRequest(BaseModel):
     question: str
     use_multi_agent: bool = False  # 是否使用多智能体系统
     user_profile: Optional[Dict] = None  # 用户档案
+    conversation_id: Optional[str] = None  # 对话ID（用于持久化）
+    attachments: Optional[List[str]] = None  # 附件ID列表（感知记忆中的资产ID）
 
 
 class TrainingPlan(BaseModel):
@@ -495,21 +500,24 @@ def _update_semantic_from_weekday_selection(user_id: int, weekdays: List[str], s
             )
 
 
-def _build_memory_dashboard(user_id: int) -> Dict[str, Any]:
+def _build_memory_dashboard(user_id: int, is_admin: bool = False) -> Dict[str, Any]:
     agent_summary = agent.get_memory_summary() if agent else {}
-    semantic_facts = db.list_semantic_facts(user_id)[:5]
-    recent_events = db.list_episodic_events(user_id, limit=5)
+    # 管理员查看所有用户的数据，普通用户只看自己的
+    target_user_ids = None if is_admin else [user_id]
+
+    semantic_facts = db.list_semantic_facts(user_id, target_user_ids=target_user_ids)[:5]
+    recent_events = db.list_episodic_events(user_id, target_user_ids=target_user_ids, limit=5)
 
     return {
         "working_memory": {
             "message_count": agent_summary.get("working_memory_size", 0)
         },
         "episodic_memory": {
-            "event_count": db.count_episodic_events(user_id),
+            "event_count": db.count_episodic_events(user_id, target_user_ids=target_user_ids),
             "recent_events": recent_events
         },
         "semantic_memory": {
-            "fact_count": db.count_semantic_facts(user_id),
+            "fact_count": db.count_semantic_facts(user_id, target_user_ids=target_user_ids),
             "top_facts": semantic_facts
         },
         "perceptual_memory": {
@@ -560,17 +568,34 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
         try:
             current_user = None
             memory_context = None
+            conv_id = request.conversation_id or str(uuid.uuid4())
             token = _extract_token_from_header(authorization)
             if token:
                 current_user = db.get_user_by_token(token)
 
             # 获取用户记忆上下文
+            perceptual_assets = []
             if current_user:
                 memory_context = memory_service.get_user_memory_context(current_user["id"])
                 memory_context["user_id"] = current_user["id"]  # 添加用户ID以便构建提示词
                 memory_prompt = memory_service.build_memory_prompt(current_user["id"], memory_context)
                 logger.debug(f"获取用户记忆上下文: user_id={current_user['id']}, "
                             f"semantic_facts={len(memory_context.get('semantic_profile', {}))}")
+
+                # 处理附件
+                if request.attachments:
+                    # 查询附件详情
+                    conn = db._get_connection()
+                    cursor = conn.cursor()
+                    placeholders = ",".join(["?"] * len(request.attachments))
+                    cursor.execute(
+                        f"SELECT * FROM memory_perceptual_assets WHERE id IN ({placeholders})",
+                        tuple(request.attachments)
+                    )
+                    rows = cursor.fetchall()
+                    conn.close()
+                    perceptual_assets = [db._row_to_perceptual_asset(row) for row in rows]
+                    logger.info(f"查询到 {len(perceptual_assets)} 个附件")
 
             if current_user and request.user_profile:
                 profile = _build_profile_from_questionnaire(request.user_profile, request.user_profile.get("source", "chat"))
@@ -579,6 +604,20 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                     _sync_profile_semantic_memory(current_user["id"], saved_profile)
 
             # 根据请求选择使用单智能体或多智能体系统
+            # 将感知记忆信息注入到记忆上下文
+            if perceptual_assets:
+                memory_context["_perceptual_assets"] = perceptual_assets
+                # 在记忆提示词中添加感知记忆信息
+                perceptual_info = "\n【用户上传的资料】\n"
+                for asset in perceptual_assets:
+                    asset_type = "图片" if asset["asset_type"] == "image" else "文档"
+                    perceptual_info += f"- {asset_type}: {asset['source_name']}"
+                    if asset.get("description"):
+                        perceptual_info += f" (备注: {asset['description']})"
+                    perceptual_info += "\n"
+                memory_prompt += "\n" + perceptual_info
+                logger.info(f"已添加 {len(perceptual_assets)} 个感知记忆资产到上下文")
+
             if request.use_multi_agent:
                 if not multi_agent_system:
                     yield f"data: {json.dumps({'type': 'answer', 'content': '多智能体系统未初始化', 'done': True}, ensure_ascii=False)}\n\n"
@@ -724,17 +763,28 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                 yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.03)  # 控制输出速度
             
-            # 记录到历史
+            # 记录到内存历史
+            mode = "multi_agent" if request.use_multi_agent else "single_agent"
             chat_history.append({
                 "question": request.question,
                 "answer": answer,
                 "thinking": thinking,
                 "timestamp": datetime.now(),
-                "mode": "multi_agent" if request.use_multi_agent else "single_agent",
+                "mode": mode,
                 "structured_response": structured_response
             })
 
+            # 持久化到数据库
             if current_user:
+                conv_id = request.conversation_id or str(uuid.uuid4())
+                db.save_chat_message(
+                    user_id=current_user["id"],
+                    conversation_id=conv_id,
+                    question=request.question,
+                    answer=answer,
+                    thinking=thinking,
+                    mode=mode
+                )
                 _record_episode(current_user["id"], {
                     "event_type": "coach_chat",
                     "question": request.question,
@@ -744,15 +794,18 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                     "payload": {
                         "use_multi_agent": request.use_multi_agent,
                         "user_profile": request.user_profile or {},
-                        "mode": "multi_agent" if request.use_multi_agent else "single_agent"
+                        "mode": mode
                     },
                     "importance_score": 0.5,
                     "tags": ["chat", "qa"]
                 })
             
-            # 发送完成信号
-            yield f"data: {json.dumps({'type': 'answer', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
-            
+            # 发送完成信号（附带 conversationId 以便前端持久化）
+            done_payload = {'type': 'answer', 'content': '', 'done': True}
+            if current_user:
+                done_payload['conversationId'] = conv_id
+            yield f"data: {json.dumps(done_payload, ensure_ascii=False)}\n\n"
+
         except Exception as e:
             logger.error(f"查询失败: {e}", exc_info=True)
             # 发送错误信息
@@ -811,6 +864,18 @@ async def query_sync(request: QueryRequest, authorization: Optional[str] = Heade
             "thinking": thinking,
             "timestamp": datetime.now()
         })
+
+        # 持久化到数据库
+        if current_user:
+            conv_id = request.conversation_id or str(uuid.uuid4())
+            db.save_chat_message(
+                user_id=current_user["id"],
+                conversation_id=conv_id,
+                question=request.question,
+                answer=answer,
+                thinking=thinking,
+                mode="single_agent"
+            )
 
         if current_user:
             _record_episode(current_user["id"], {
@@ -966,11 +1031,201 @@ async def get_knowledge_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/knowledge/documents")
+async def list_knowledge_documents(authorization: Optional[str] = Header(None)):
+    """
+    获取知识库文档列表（仅管理员）
+    """
+    try:
+        user = _require_current_user(authorization)
+        if user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="需要管理员权限")
+
+        from utils.config_handler import chroma_conf
+        from utils.path_tool import get_abs_path
+        from utils.file_handler import listdir_with_allowed_type, get_file_md5_hex, check_md5
+
+        data_path = get_abs_path(chroma_conf["data_path"])
+        allowed_types = tuple(chroma_conf["allowed_knowledge_file_types"])
+
+        # 获取知识库中的文件列表
+        knowledge_files = listdir_with_allowed_type(data_path, allowed_types)
+
+        documents = []
+        for file_path in knowledge_files:
+            file_name = Path(file_path).name
+            file_size = os.path.getsize(file_path)
+            md5_hex = get_file_md5_hex(file_path)
+            in_vector_db = check_md5(md5_hex)
+
+            # 获取文件类型
+            file_ext = Path(file_name).suffix.lower().lstrip('.')
+            file_type = "pdf" if file_ext == "pdf" else ("md" if file_ext == "md" else "txt")
+
+            # 计算块数（从向量数据库统计）
+            chunk_count = 0
+            try:
+                collection = agent.vector_store_service.vector_store._collection
+                # 根据文件名过滤文档
+                results = collection.get(where={"file_name": file_name})
+                chunk_count = len(results["ids"])
+            except:
+                pass
+
+            documents.append({
+                "id": md5_hex,
+                "name": file_name,
+                "path": file_path,
+                "type": file_type,
+                "size": file_size,
+                "size_formatted": _format_file_size(file_size),
+                "chunks": chunk_count,
+                "in_vector_db": in_vector_db,
+                "uploaded_at": datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+            })
+
+        return {"documents": documents}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取文档列表失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/knowledge/documents/upload")
+async def upload_knowledge_document(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None)
+):
+    """
+    上传知识库文档（仅管理员）
+    """
+    try:
+        user = _require_current_user(authorization)
+        if user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="需要管理员权限")
+
+        from utils.config_handler import chroma_conf
+        from utils.path_tool import get_abs_path
+
+        data_path = get_abs_path(chroma_conf["data_path"])
+        data_path.mkdir(parents=True, exist_ok=True)
+
+        # 检查文件类型
+        file_ext = Path(file.filename).suffix.lower().lstrip('.')
+        allowed_types = chroma_conf["allowed_knowledge_file_types"]
+        if file_ext not in allowed_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"不支持的文件类型，仅支持: {', '.join(allowed_types)}"
+            )
+
+        # 保存文件
+        file_path = data_path / file.filename
+
+        # 如果文件已存在，添加后缀
+        counter = 1
+        original_name = Path(file.filename).stem
+        original_ext = Path(file.filename).suffix
+        while file_path.exists():
+            new_name = f"{original_name}_{counter}{original_ext}"
+            file_path = data_path / new_name
+            counter += 1
+
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        logger.info(f"文档上传成功: {file_path}, 大小: {len(content)} bytes")
+
+        return {
+            "success": True,
+            "message": "文档上传成功",
+            "filename": file_path.name,
+            "size": len(content)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"文档上传失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/knowledge/documents/{doc_id}")
+async def delete_knowledge_document(
+    doc_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    删除知识库文档（仅管理员）
+    """
+    try:
+        user = _require_current_user(authorization)
+        if user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="需要管理员权限")
+
+        from utils.config_handler import chroma_conf
+        from utils.path_tool import get_abs_path
+        from utils.file_handler import get_file_md5_hex
+
+        data_path = get_abs_path(chroma_conf["data_path"])
+
+        # 查找文件
+        target_file = None
+        for file_path in data_path.glob("*"):
+            if file_path.is_file() and get_file_md5_hex(str(file_path)) == doc_id:
+                target_file = file_path
+                break
+
+        if not target_file:
+            raise HTTPException(status_code=404, detail="文档不存在")
+
+        # 从向量数据库中删除相关文档块
+        collection = agent.vector_store_service.vector_store._collection
+        try:
+            results = collection.get(where={"file_name": target_file.name})
+            if results["ids"]:
+                collection.delete(ids=results["ids"])
+                logger.info(f"从向量数据库删除 {len(results['ids'])} 个文档块: {target_file.name}")
+        except Exception as e:
+            logger.warning(f"从向量数据库删除文档块失败: {e}")
+
+        # 删除源文件
+        os.remove(target_file)
+        logger.info(f"文档删除成功: {target_file}")
+
+        # 清除 MD5 记录
+        try:
+            from utils.file_handler import remove_md5
+            remove_md5(doc_id)
+        except:
+            pass
+
+        return {"success": True, "message": "文档删除成功"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"文档删除失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _format_file_size(size_bytes: int) -> str:
+    """格式化文件大小"""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.1f} TB"
+
+
 @app.get("/api/memory/summary", response_model=MemorySummary)
 async def get_memory_summary(authorization: Optional[str] = Header(None)):
     """
     获取记忆系统摘要
-    
+
     Returns:
         记忆系统各层的统计信息
     """
@@ -979,11 +1234,15 @@ async def get_memory_summary(authorization: Optional[str] = Header(None)):
             raise HTTPException(status_code=500, detail="Agent未初始化")
         user = _require_current_user(authorization)
         summary = agent.get_memory_summary()
-        
+
+        # 管理员查看所有用户的统计，普通用户只看自己的
+        is_admin = user.get("role") == "admin"
+        target_user_ids = None if is_admin else [user["id"]]
+
         return MemorySummary(
             working_memory_size=summary.get('working_memory_size', 0),
-            episodic_memory_size=db.count_episodic_events(user["id"]),
-            semantic_concepts=db.count_semantic_facts(user["id"]),
+            episodic_memory_size=db.count_episodic_events(user["id"], target_user_ids=target_user_ids),
+            semantic_concepts=db.count_semantic_facts(user["id"], target_user_ids=target_user_ids),
             perceptual_documents=summary.get('perceptual_documents', 0)
         )
     except HTTPException:
@@ -1024,7 +1283,8 @@ async def clear_working_memory(authorization: Optional[str] = Header(None)):
 async def get_memory_dashboard(authorization: Optional[str] = Header(None)):
     try:
         user = _require_current_user(authorization)
-        return _build_memory_dashboard(user["id"])
+        is_admin = user.get("role") == "admin"
+        return _build_memory_dashboard(user["id"], is_admin=is_admin)
     except HTTPException:
         raise
     except Exception as e:
@@ -1057,12 +1317,238 @@ async def get_memory_episodes(
 ):
     try:
         user = _require_current_user(authorization)
-        episodes = db.list_episodic_events(user["id"], event_type=event_type, plan_id=plan_id, limit=limit)
+        is_admin = user.get("role") == "admin"
+        target_user_ids = None if is_admin else [user["id"]]
+        episodes = db.list_episodic_events(
+            user["id"],
+            event_type=event_type,
+            plan_id=plan_id,
+            limit=limit,
+            target_user_ids=target_user_ids
+        )
         return {"episodes": episodes, "total": len(episodes)}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"获取情景记忆失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat/upload")
+async def upload_chat_attachment(
+    file: UploadFile = File(...),
+    description: str = Form(""),
+    authorization: Optional[str] = Header(None)
+):
+    """
+    上传聊天附件（图片或文档）并保存到感知记忆
+
+    Args:
+        file: 上传的文件
+        description: 文件描述
+
+    Returns:
+        上传的文件信息（包括asset_id）
+    """
+    try:
+        user = _require_current_user(authorization)
+
+        # 验证文件类型
+        allowed_extensions = {
+            "image": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"},
+            "document": {".pdf", ".doc", ".docx", ".txt", ".md"}
+        }
+
+        file_ext = Path(file.filename).suffix.lower() if file.filename else ""
+        if not file_ext:
+            raise HTTPException(status_code=400, detail="文件缺少扩展名")
+
+        # 确定资产类型
+        asset_type = None
+        if file_ext in allowed_extensions["image"]:
+            asset_type = "image"
+        elif file_ext in allowed_extensions["document"]:
+            asset_type = "document"
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"不支持的文件类型。支持的类型: {', '.join(allowed_extensions['image'] | allowed_extensions['document'])}"
+            )
+
+        # 创建用户文件目录
+        user_upload_dir = DATA_DIR / "uploads" / f"user_{user['id']}"
+        user_upload_dir.mkdir(parents=True, exist_ok=True)
+
+        # 生成唯一文件名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_filename = f"{timestamp}_{uuid.uuid4().hex[:8]}{file_ext}"
+        file_path = user_upload_dir / unique_filename
+
+        # 保存文件
+        try:
+            content = await file.read()
+            with open(file_path, "wb") as f:
+                f.write(content)
+            logger.info(f"文件上传成功: {file_path}, 大小: {len(content)} bytes")
+        except Exception as e:
+            logger.error(f"文件保存失败: {e}")
+            raise HTTPException(status_code=500, detail=f"文件保存失败: {str(e)}")
+
+        # 保存到感知记忆
+        asset = db.create_perceptual_asset({
+            "asset_type": asset_type,
+            "source_path": str(file_path),
+            "source_name": file.filename,
+            "title": file.filename,
+            "description": description or f"用户上传的{asset_type}",
+            "body_part": None,
+            "movement_type": None,
+            "risk_level": None,
+            "contraindications": [],
+            "embedding_ref": None
+        })
+
+        logger.info(f"感知记忆创建成功: asset_id={asset.get('id')}, type={asset_type}")
+
+        return {
+            "status": "success",
+            "asset_id": asset.get("id"),
+            "asset_type": asset_type,
+            "filename": file.filename,
+            "description": description
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"文件上传失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chat/attachments")
+async def get_chat_attachments(
+    asset_type: Optional[str] = None,
+    limit: int = 50,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    获取用户的聊天附件列表
+
+    Args:
+        asset_type: 资产类型筛选 (image/document)
+        limit: 返回数量限制
+
+    Returns:
+        附件列表
+    """
+    try:
+        user = _require_current_user(authorization)
+
+        # 这里简化实现，通过查询感知记忆表获取
+        # 实际可能需要添加 db.list_perceptual_assets 方法
+        conn = db._get_connection()
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM memory_perceptual_assets WHERE 1=1"
+        params = []
+
+        if asset_type:
+            query += " AND asset_type = ?"
+            params.append(asset_type)
+
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        conn.close()
+
+        assets = [db._row_to_perceptual_asset(row) for row in rows]
+
+        return {"assets": assets, "total": len(assets)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取附件列表失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chat/attachments/{asset_id}")
+async def get_chat_attachment(
+    asset_id: int,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    获取单个附件详情
+
+    Args:
+        asset_id: 资产ID
+
+    Returns:
+        资产详情
+    """
+    try:
+        user = _require_current_user(authorization)
+        asset = db.get_perceptual_asset(asset_id)
+
+        if not asset:
+            raise HTTPException(status_code=404, detail="附件不存在")
+
+        return asset
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取附件详情失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/chat/attachments/{asset_id}")
+async def delete_chat_attachment(
+    asset_id: int,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    删除聊天附件
+
+    Args:
+        asset_id: 资产ID
+
+    Returns:
+        删除结果
+    """
+    try:
+        user = _require_current_user(authorization)
+        asset = db.get_perceptual_asset(asset_id)
+
+        if not asset:
+            raise HTTPException(status_code=404, detail="附件不存在")
+
+        # 删除物理文件
+        file_path = Path(asset.get("source_path"))
+        if file_path.exists():
+            try:
+                file_path.unlink()
+                logger.info(f"物理文件已删除: {file_path}")
+            except Exception as e:
+                logger.warning(f"删除物理文件失败: {e}")
+
+        # 删除数据库记录
+        conn = db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM memory_perceptual_assets WHERE id = ?", (asset_id,))
+        conn.commit()
+        conn.close()
+
+        logger.info(f"感知记忆资产已删除: asset_id={asset_id}")
+
+        return {"status": "success", "message": "附件已删除"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除附件失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1073,7 +1559,13 @@ async def get_memory_semantic(
 ):
     try:
         user = _require_current_user(authorization)
-        facts = db.list_semantic_facts(user["id"], fact_category=category)
+        is_admin = user.get("role") == "admin"
+        target_user_ids = None if is_admin else [user["id"]]
+        facts = db.list_semantic_facts(
+            user["id"],
+            fact_category=category,
+            target_user_ids=target_user_ids
+        )
         return {"facts": facts, "total": len(facts)}
     except HTTPException:
         raise
@@ -1138,28 +1630,32 @@ async def update_my_profile(
 
 
 @app.get("/api/chat/history")
-async def get_chat_history():
+async def get_chat_history(authorization: Optional[str] = Header(None)):
     """
-    获取对话历史
-    
-    Returns:
-        对话历史列表
+    获取当前用户的对话历史（从数据库持久化读取）
     """
     try:
-        # 返回最近20条记录
-        recent_history = chat_history[-20:] if len(chat_history) > 20 else chat_history
-        
-        return {
-            "history": [
-                {
-                    "question": item["question"],
-                    "answer": item["answer"],
-                    "timestamp": item["timestamp"].isoformat()
-                }
-                for item in recent_history
-            ],
-            "total": len(chat_history)
-        }
+        current_user = _require_current_user(authorization)
+        conversations = db.get_chat_conversations(current_user["id"], limit=50)
+
+        history = []
+        for conv in conversations:
+            msgs = db.get_conversation_messages(current_user["id"], conv["conversation_id"])
+            conversation_list = []
+            for m in msgs:
+                conversation_list.append({"role": "user", "content": m["question"], "timestamp": m["created_at"]})
+                conversation_list.append({"role": "assistant", "content": m["answer"], "timestamp": m["created_at"]})
+            history.append({
+                "question": conv["question"],
+                "answer": conv["answer"],
+                "timestamp": conv["last_time"],
+                "conversationId": conv["conversation_id"],
+                "conversation": conversation_list
+            })
+
+        return {"history": history, "total": len(history)}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取对话历史失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))

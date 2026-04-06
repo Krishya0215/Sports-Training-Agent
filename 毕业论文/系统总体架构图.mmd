@@ -1,0 +1,143 @@
+graph TB
+    %% 系统总体架构图 - Mermaid格式
+
+    subgraph UserLayer["用户层"]
+        User[用户<br/>运动员/教练]
+    end
+
+    subgraph Frontend["前端展示层 (Vue.js + Element Plus)"]
+        Login[登录注册]
+        Chat[AI教练对话]
+        KB[知识库管理]
+        Training[训练记录]
+        Profile[个人中心]
+    end
+
+    subgraph Backend["后端服务层 (FastAPI)"]
+        Auth[认证服务]
+        Gateway[API网关]
+        ChatAPI[聊天服务]
+        KBAPI[知识库服务]
+        TrainingAPI[训练服务]
+        MemoryAPI[记忆服务]
+    end
+
+    subgraph MultiAgent["多智能体层 (LangGraph)"]
+        Router[请求路由器]
+        Workflow[工作流引擎]
+        Planning[训练规划教练]
+        Technique[技术指导教练]
+        Recovery[运动康复教练]
+        Synthesizer[综合输出器]
+    end
+
+    subgraph RAG["RAG检索系统"]
+        Retriever[高级检索器]
+        DocProc[文档处理器]
+        VectorSvc[向量存储服务]
+        MQE[MQE多查询扩展]
+        HyDE[HyDE假设文档]
+        Rerank[重排序优化]
+    end
+
+    subgraph Memory["记忆管理模块"]
+        Working[工作记忆]
+        Episodic[情景记忆]
+        Semantic[语义记忆]
+        Perceptual[感知记忆]
+    end
+
+    subgraph Data["数据存储层"]
+        VectorDB[向量数据库<br/>Chroma]
+        SQLDB[关系数据库<br/>SQLite]
+        Files[知识库文件]
+    end
+
+    subgraph Model["模型服务层 (通义千问)"]
+        LLM[大语言模型]
+        Embedding[嵌入模型]
+    end
+
+    %% 用户到前端
+    User -->|登录/注册| Login
+    User -->|AI对话| Chat
+    User -->|知识管理| KB
+    User -->|训练记录| Training
+    User -->|个人设置| Profile
+
+    %% 前端到后端
+    Login -->|认证请求| Auth
+    Chat -->|对话请求| ChatAPI
+    KB -->|知识库操作| KBAPI
+    Training -->|训练数据| TrainingAPI
+    Profile -->|画像更新| MemoryAPI
+
+    %% 后端内部
+    Auth --> Gateway
+    ChatAPI --> Gateway
+    KBAPI --> Gateway
+    TrainingAPI --> Gateway
+    MemoryAPI --> Gateway
+
+    %% 后端到多智能体
+    ChatAPI -->|路由请求| Router
+    ChatAPI -->|获取记忆| Working
+    Router --> Workflow
+    Workflow -->|规划| Planning
+    Workflow -->|技术| Technique
+    Workflow -->|康复| Recovery
+    Planning --> Synthesizer
+    Technique --> Synthesizer
+    Recovery --> Synthesizer
+
+    %% 多智能体到RAG
+    Workflow -->|检索知识| Retriever
+    Retriever --> VectorSvc
+    DocProc --> VectorSvc
+
+    %% RAG内部
+    Retriever --> MQE
+    MQE --> HyDE
+    HyDE --> Rerank
+
+    %% 记忆管理
+    MemoryAPI --> Working
+    MemoryAPI --> Episodic
+    MemoryAPI --> Semantic
+    MemoryAPI --> Perceptual
+
+    %% 数据存储
+    VectorSvc -->|存储/查询| VectorDB
+    VectorDB -->|向量化| Embedding
+    MemoryAPI -->|持久化| SQLDB
+    Auth -->|用户数据| SQLDB
+    TrainingAPI -->|训练记录| SQLDB
+    KBAPI -->|文件加载| Files
+
+    %% 模型调用
+    Planning --> LLM
+    Technique --> LLM
+    Recovery --> LLM
+    Synthesizer --> LLM
+    Router --> LLM
+    Retriever -->|HyDE生成| LLM
+    DocProc -->|嵌入| Embedding
+
+    %% 样式
+    classDef userStyle fill:#d5e8d4,stroke:#82b366,stroke-width:2px
+    classDef frontendStyle fill:#e3f2fd,stroke:#6c8ebf,stroke-width:2px
+    classDef backendStyle fill:#ffe6cc,stroke:#d79b00,stroke-width:2px
+    classDef agentStyle fill:#f8cecc,stroke:#b85450,stroke-width:2px
+    classDef ragStyle fill:#e1d5e7,stroke:#8e44ad,stroke-width:2px
+    classDef memoryStyle fill:#b2dfdb,stroke:#00796b,stroke-width:2px
+    classDef dataStyle fill:#cfd8dc,stroke:#546e7a,stroke-width:2px
+    classDef modelStyle fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+
+    class User userStyle
+    class Login,Chat,KB,Training,Profile frontendStyle
+    class Auth,Gateway,ChatAPI,KBAPI,TrainingAPI,MemoryAPI backendStyle
+    class Router,Workflow,Planning,Technique,Recovery,Synthesizer agentStyle
+    class Retriever,DocProc,VectorSvc,MQE,HyDE,Rerank ragStyle
+    class Working,Episodic,Semantic,Perceptual memoryStyle
+    class VectorDB,SQLDB,Files dataStyle
+    class LLM,Embedding modelStyle

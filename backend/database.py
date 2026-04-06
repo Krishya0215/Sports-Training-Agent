@@ -39,6 +39,7 @@ class UserDatabase:
                 username TEXT UNIQUE NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
+                role TEXT DEFAULT 'user',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 is_first_login INTEGER DEFAULT 1,
@@ -229,6 +230,26 @@ class UserDatabase:
             )
         """)
 
+        # 聊天消息持久化表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                conversation_id TEXT NOT NULL,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                thinking TEXT,
+                mode TEXT DEFAULT 'single_agent',
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_chat_messages_user_conv
+            ON chat_messages(user_id, conversation_id)
+        """)
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS daily_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -316,7 +337,7 @@ class UserDatabase:
         conn.close()
         return result is not None
     
-    def create_user(self, username: str, email: str, password_hash: str) -> bool:
+    def create_user(self, username: str, email: str, password_hash: str, role: str = "user") -> bool:
         """创建新用户"""
         try:
             conn = self._get_connection()
@@ -324,9 +345,9 @@ class UserDatabase:
             
             now = datetime.now().isoformat()
             cursor.execute("""
-                INSERT INTO users (username, email, password, created_at, updated_at, is_first_login, profile_completed)
-                VALUES (?, ?, ?, ?, ?, 1, 0)
-            """, (username, email, password_hash, now, now))
+                INSERT INTO users (username, email, password, role, created_at, updated_at, is_first_login, profile_completed)
+                VALUES (?, ?, ?, ?, ?, ?, 1, 0)
+            """, (username, email, password_hash, role, now, now))
             
             conn.commit()
             conn.close()
@@ -1013,12 +1034,21 @@ class UserDatabase:
         user_id: int,
         event_type: Optional[str] = None,
         plan_id: Optional[int] = None,
-        limit: int = 20
+        limit: int = 20,
+        target_user_ids: Optional[List[int]] = None
     ) -> List[Dict[str, Any]]:
         conn = self._get_connection()
         cursor = conn.cursor()
-        query = "SELECT * FROM memory_episodic_events WHERE user_id = ?"
-        params: List[Any] = [user_id]
+
+        # 如果 target_user_ids 为 None，表示管理员查看所有用户
+        if target_user_ids is None:
+            query = "SELECT * FROM memory_episodic_events WHERE 1=1"
+            params: List[Any] = []
+        else:
+            query = "SELECT * FROM memory_episodic_events WHERE user_id IN ({})".format(
+                ",".join(["?"] * len(target_user_ids))
+            )
+            params: List[Any] = list(target_user_ids)
 
         if event_type:
             query += " AND event_type = ?"
@@ -1034,10 +1064,19 @@ class UserDatabase:
         conn.close()
         return [self._row_to_episode(row) for row in rows]
 
-    def count_episodic_events(self, user_id: int) -> int:
+    def count_episodic_events(self, user_id: int, target_user_ids: Optional[List[int]] = None) -> int:
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) AS count FROM memory_episodic_events WHERE user_id = ?", (user_id,))
+
+        # 如果 target_user_ids 为 None，表示管理员查看所有用户
+        if target_user_ids is None:
+            cursor.execute("SELECT COUNT(*) AS count FROM memory_episodic_events")
+        else:
+            query = "SELECT COUNT(*) AS count FROM memory_episodic_events WHERE user_id IN ({})".format(
+                ",".join(["?"] * len(target_user_ids))
+            )
+            cursor.execute(query, tuple(target_user_ids))
+
         row = cursor.fetchone()
         conn.close()
         return int(row["count"]) if row else 0
@@ -1097,32 +1136,50 @@ class UserDatabase:
         conn.close()
         return dict(row) if row else None
 
-    def list_semantic_facts(self, user_id: int, fact_category: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_semantic_facts(
+        self,
+        user_id: int,
+        fact_category: Optional[str] = None,
+        target_user_ids: Optional[List[int]] = None
+    ) -> List[Dict[str, Any]]:
         conn = self._get_connection()
         cursor = conn.cursor()
-        if fact_category:
-            cursor.execute("""
-                SELECT * FROM memory_semantic_facts
-                WHERE user_id = ? AND fact_category = ? AND is_active = 1
-                ORDER BY updated_at DESC, id DESC
-            """, (user_id, fact_category))
+
+        # 如果 target_user_ids 为 None，表示管理员查看所有用户
+        if target_user_ids is None:
+            base_query = "SELECT * FROM memory_semantic_facts WHERE is_active = 1"
+            params: List[Any] = []
+            if fact_category:
+                base_query += " AND fact_category = ?"
+                params.append(fact_category)
         else:
-            cursor.execute("""
-                SELECT * FROM memory_semantic_facts
-                WHERE user_id = ? AND is_active = 1
-                ORDER BY updated_at DESC, id DESC
-            """, (user_id,))
+            base_query = "SELECT * FROM memory_semantic_facts WHERE user_id IN ({}) AND is_active = 1".format(
+                ",".join(["?"] * len(target_user_ids))
+            )
+            params: List[Any] = list(target_user_ids)
+            if fact_category:
+                base_query += " AND fact_category = ?"
+                params.append(fact_category)
+
+        query = base_query + " ORDER BY updated_at DESC, id DESC"
+        cursor.execute(query, tuple(params))
         rows = cursor.fetchall()
         conn.close()
         return [dict(row) for row in rows]
 
-    def count_semantic_facts(self, user_id: int) -> int:
+    def count_semantic_facts(self, user_id: int, target_user_ids: Optional[List[int]] = None) -> int:
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT COUNT(*) AS count FROM memory_semantic_facts
-            WHERE user_id = ? AND is_active = 1
-        """, (user_id,))
+
+        # 如果 target_user_ids 为 None，表示管理员查看所有用户
+        if target_user_ids is None:
+            cursor.execute("SELECT COUNT(*) AS count FROM memory_semantic_facts WHERE is_active = 1")
+        else:
+            query = "SELECT COUNT(*) AS count FROM memory_semantic_facts WHERE user_id IN ({}) AND is_active = 1".format(
+                ",".join(["?"] * len(target_user_ids))
+            )
+            cursor.execute(query, tuple(target_user_ids))
+
         row = cursor.fetchone()
         conn.close()
         return int(row["count"]) if row else 0
@@ -1319,6 +1376,76 @@ class UserDatabase:
             "max_rounds": session.get("max_rounds"),
             "messages": messages
         }
+
+    # ── 聊天消息持久化 ──────────────────────────────────────
+
+    def save_chat_message(self, user_id: int, conversation_id: str,
+                          question: str, answer: str,
+                          thinking: str = "", mode: str = "single_agent") -> Optional[int]:
+        """保存一条聊天消息，返回 id"""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute("""
+                INSERT INTO chat_messages
+                    (user_id, conversation_id, question, answer, thinking, mode, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (user_id, conversation_id, question, answer, thinking or "", mode, now))
+            msg_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            return msg_id
+        except Exception:
+            return None
+
+    def get_chat_history(self, user_id: int, limit: int = 50, offset: int = 0) -> List[Dict]:
+        """获取用户聊天历史（按时间倒序，最新的在前）"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, conversation_id, question, answer, thinking, mode, created_at
+            FROM chat_messages
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        """, (user_id, limit, offset))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_chat_conversations(self, user_id: int, limit: int = 50) -> List[Dict]:
+        """获取用户的对话列表（每个 conversation 取最新一条消息作为摘要）"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT conversation_id,
+                   question,
+                   answer,
+                   MAX(created_at) AS last_time
+            FROM chat_messages
+            WHERE user_id = ?
+            GROUP BY conversation_id
+            ORDER BY last_time DESC
+            LIMIT ?
+        """, (user_id, limit))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_conversation_messages(self, user_id: int, conversation_id: str) -> List[Dict]:
+        """获取某个对话的所有消息"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, question, answer, thinking, mode, created_at
+            FROM chat_messages
+            WHERE user_id = ? AND conversation_id = ?
+            ORDER BY created_at ASC
+        """, (user_id, conversation_id))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
 
     def end_working_session(
         self,
