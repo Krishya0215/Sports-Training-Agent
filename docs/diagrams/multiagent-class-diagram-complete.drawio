@@ -1,0 +1,257 @@
+<mxfile host="app.diagrams.net" modified="2025-01-01T00:00:00.000Z" agent="Claude" version="24.0.0">
+  <diagram name="MultiAgentSystem" id="multiagent-system">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- AgentState -->
+        <mxCell id="agentState" value="AgentState&#xa;[TypedDict]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="200" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="agentState_attrs" value="+ question: str&#xa;+ chat_history: str&#xa;+ retrieved_docs: List&#xa;+ context: str&#xa;+ answer: str&#xa;+ iteration: int&#xa;+ question_type: str&#xa;+ use_rag: bool&#xa;+ classification_confidence: float" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="agentState">
+          <mxGeometry y="30" width="200" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="agentState_sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="agentState">
+          <mxGeometry y="170" width="200" height="8" as="geometry" />
+        </mxCell>
+
+        <!-- TrainingState -->
+        <mxCell id="trainingState" value="TrainingState&#xa;[TypedDict]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#5173d7;rounded=1;fontColor=#ffffff;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="700" width="220" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="trainingState_attrs" value="+ user_input: str&#xa;+ user_profile: dict&#xa;+ retrieved_docs: List&#xa;+ routing: dict&#xa;+ selected_agents: List&#xa;+ execution_plan: List&#xa;+ agent_results: dict&#xa;+ final_response: str&#xa;+ structured_response: dict&#xa;+ workflow_history: List&#xa;+ _stream_callback: Any" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#ffffff;" vertex="1" parent="trainingState">
+          <mxGeometry y="30" width="220" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- SportsTrainingAgent -->
+        <mxCell id="sportsAgent" value="SportsTrainingAgent" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="300" y="40" width="340" height="480" as="geometry" />
+        </mxCell>
+        <mxCell id="sportsAgent_private" value="- vector_store_service&#xa;- retriever&#xa;- memory_manager&#xa;- model&#xa;- answer_prompt&#xa;- answer_chain&#xa;- graph" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="sportsAgent">
+          <mxGeometry y="30" width="340" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="sportsAgent_sep1" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="sportsAgent">
+          <mxGeometry y="130" width="340" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="sportsAgent_public" value="+ __init__()&#xa;+ query()&#xa;+ load_knowledge_base()&#xa;+ get_memory_summary()&#xa;+ clear_working_memory()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="sportsAgent">
+          <mxGeometry y="138" width="340" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="sportsAgent_sep2" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="sportsAgent">
+          <mxGeometry y="248" width="340" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="sportsAgent_private_methods" value="- _build_graph()&#xa;- _classify_question_node()&#xa;- _retrieve_node()&#xa;- _direct_response_node()&#xa;- _format_context_node()&#xa;- _generate_answer_node()&#xa;- _update_memory_node()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="sportsAgent">
+          <mxGeometry y="256" width="340" height="144" as="geometry" />
+        </mxCell>
+
+        <!-- MultiAgentTrainingSystem -->
+        <mxCell id="multiAgent" value="MultiAgentTrainingSystem" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="300" y="620" width="360" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="multiAgent_private" value="- vector_store_service&#xa;- retriever&#xa;- memory_manager&#xa;- coaches&#xa;- coach_catalog&#xa;- graph&#xa;- synthesis_chain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="multiAgent">
+          <mxGeometry y="30" width="360" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="multiAgent_sep1" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="multiAgent">
+          <mxGeometry y="140" width="360" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="multiAgent_public" value="+ __init__()&#xa;+ process_request()&#xa;+ load_knowledge_base()&#xa;+ get_memory_summary()&#xa;+ clear_working_memory()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="multiAgent">
+          <mxGeometry y="148" width="360" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="multiAgent_sep2" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="multiAgent">
+          <mxGeometry y="258" width="360" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="multiAgent_private_methods" value="- _init_coaches()&#xa;- _init_synthesizer()&#xa;- _build_graph()&#xa;- _retrieve_node()&#xa;- _build_execution_plan_node()&#xa;- _execute_agents_node()&#xa;- _synthesize_node()&#xa;- _update_memory_node()&#xa;- _analyze_request()&#xa;- _select_agents()&#xa;- _build_execution_batches()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="multiAgent">
+          <mxGeometry y="266" width="360" height="154" as="geometry" />
+        </mxCell>
+
+        <!-- CoachAgent (Base) -->
+        <mxCell id="coachAgent" value="CoachAgent&#xa;[abstract]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="80" width="260" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="coachAgent_public" value="+ name: str&#xa;+ role: str&#xa;+ __init__()&#xa;+ process()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="coachAgent">
+          <mxGeometry y="30" width="260" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="coachAgent_sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="coachAgent">
+          <mxGeometry y="120" width="260" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="coachAgent_private" value="- model&#xa;- prompt&#xa;- chain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="coachAgent">
+          <mxGeometry y="128" width="260" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- PlanningCoach -->
+        <mxCell id="planningCoach" value="PlanningCoach&#xa;[instance]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="300" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="planningCoach_details" value="name: Planning Coach&#xa;role: planning&#xa;desc: 制定训练计划" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="planningCoach">
+          <mxGeometry y="30" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- TechniqueCoach -->
+        <mxCell id="techniqueCoach" value="TechniqueCoach&#xa;[instance]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="460" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="techniqueCoach_details" value="name: Technique Coach&#xa;role: technique&#xa;desc: 动作指导" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="techniqueCoach">
+          <mxGeometry y="30" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- RecoveryCoach -->
+        <mxCell id="recoveryCoach" value="RecoveryCoach&#xa;[instance]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1" style="dashed=1;">
+          <mxGeometry x="700" y="620" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="recoveryCoach_details" value="name: Recovery Coach&#xa;role: recovery&#xa;desc: 损伤预防" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="recoveryCoach">
+          <mxGeometry y="30" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- QuestionClassifier -->
+        <mxCell id="questionClassifier" value="QuestionClassifier" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3949ab;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="200" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="questionClassifier_content" value="+ PROFESSIONAL_KEYWORDS&#xa;+ CHAT_KEYWORDS&#xa;+ classify()&#xa;+ should_use_rag()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="questionClassifier">
+          <mxGeometry y="30" width="200" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- External Dependencies -->
+        <mxCell id="vectorStore" value="VectorStoreService&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="980" y="40" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="vectorStore_methods" value="+ get_retriever()&#xa;+ load_documents()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="vectorStore">
+          <mxGeometry y="30" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="retriever" value="AdvancedRetriever&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="980" y="160" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="retriever_methods" value="+ retrieve()&#xa;- base_retriever" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="retriever">
+          <mxGeometry y="30" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="memoryManager" value="MemoryManager&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="980" y="280" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="memoryManager_attrs" value="+ working_memory&#xa;+ episodic_memory&#xa;+ semantic_memory" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="memoryManager">
+          <mxGeometry y="30" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="memoryManager_methods" value="+ get_context()&#xa;+ record()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="memoryManager">
+          <mxGeometry y="120" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="stateGraph" value="StateGraph&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="980" y="440" width="180" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="stateGraph_methods" value="+ add_node()&#xa;+ add_edge()&#xa;+ compile()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="stateGraph">
+          <mxGeometry y="30" width="180" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Relationships -->
+        <mxCell id="rel1" value="manages" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;fontSize=10;endArrow=none;startArrow=none;" edge="1" parent="1" source="sportsAgent" target="agentState">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel2" value="manages" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#b85450;fontSize=10;endArrow=none;startArrow=none;" edge="1" parent="1" source="multiAgent" target="trainingState">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel3" value="creates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#b85450;fontSize=10;endArrow=diamondThin;startArrow=none;" edge="1" parent="1" source="multiAgent" target="coachAgent">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="710" />
+              <mxPoint x="830" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel4" value="instance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#d79b00;fontSize=10;endArrow=none;startArrow=none;dashed=1;" edge="1" parent="1" source="coachAgent" target="planningCoach">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel5" value="instance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#d79b00;fontSize=10;endArrow=none;startArrow=none;dashed=1;" edge="1" parent="1" source="coachAgent" target="techniqueCoach">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel6" value="instance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#d79b00;fontSize=10;endArrow=none;startArrow=none;dashed=1;" edge="1" parent="1" source="coachAgent" target="recoveryCoach">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel7" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="sportsAgent" target="vectorStore">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="80" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel8" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="sportsAgent" target="retriever">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="120" />
+              <mxPoint x="920" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel9" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="sportsAgent" target="memoryManager">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="140" />
+              <mxPoint x="920" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel10" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="sportsAgent" target="stateGraph">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="160" />
+              <mxPoint x="920" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel11" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="multiAgent" target="vectorStore">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="800" />
+              <mxPoint x="920" y="80" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel12" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="multiAgent" target="retriever">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="800" />
+              <mxPoint x="920" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel13" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="multiAgent" target="memoryManager">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="800" />
+              <mxPoint x="920" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel14" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="multiAgent" target="stateGraph">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="800" />
+              <mxPoint x="920" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel15" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;fontSize=10;endArrow=open;startArrow=none;" edge="1" parent="1" source="sportsAgent" target="questionClassifier">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="165" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="title" value="MultiAgent Training System - Complete Class Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="480" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="Legend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#666666;fontColor=#333333;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="980" y="620" width="180" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_content" value="+ public&#xa;- private&#xa;--------&#xa;manages: owns&#xa;creates: creates&#xa;uses: depends&#xa;instance: instance" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=10;spacingRight=10;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=10;" vertex="1" parent="legend">
+          <mxGeometry y="30" width="180" height="130" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

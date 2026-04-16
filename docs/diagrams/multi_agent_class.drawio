@@ -1,0 +1,207 @@
+<mxfile host="app.diagrams.net" modified="2026-04-07T00:00:00Z" agent="draw.io" version="22.1.0">
+  <diagram name="MultiAgentSystem" id="multi-agent-class-diagram">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" value="多智能体训练系统 - 类图" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="320" y="40" width="360" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="MultiAgentTrainingSystem" style="swimlane;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="80" y="140" width="280" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="TrainingState" style="swimlane;fillColor=#fff2cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="380" y="140" width="220" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="CoachAgent" style="swimlane;fillColor=#d4edda;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="620" y="140" width="720" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="字段定义" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="2">
+          <mxGeometry x="90" y="160" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="- user_input: str" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="200" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="- user_profile: dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="230" width="220" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="- retrieved_docs: List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="260" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="- routing: Dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="290" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="- selected_agents: List[str]" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="320" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="- execution_plan: List[List[str]]" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="350" width="220" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="- agent_results: Dict[str, str]" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="380" width="220" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="- final_response: str" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="410" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="- structured_response: Dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="440" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="- workflow_history: List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="470" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="- _stream_callback: Any" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="500" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="核心方法" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="2">
+          <mxGeometry x="90" y="540" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="+ process_request(user_input, user_profile, stream_callback)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="580" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="+ _build_graph() -> StateGraph" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="610" width="280" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="+ load_knowledge_base()" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="640" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="+ get_memory_summary()" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="100" y="670" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="依赖" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="2">
+          <mxGeometry x="200" y="700" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="- VectorStoreService" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="200" y="730" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="- MemoryManager" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="2">
+          <mxGeometry x="200" y="760" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="节点方法" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="3">
+          <mxGeometry x="390" y="160" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="- _retrieve_node()" style="text;html=1;strokeColor=#6c8ebf;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="400" y="200" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="- _build_execution_plan_node()" style="text;html=1;strokeColor=#6c8ebf;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="400" y="230" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="- _execute_agents_node()" style="text;html=1;strokeColor=#6c8ebf;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="400" y="260" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="- _synthesize_node()" style="text;html=1;strokeColor=#6c8ebf;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="400" y="290" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="- _update_memory_node()" style="text;html=1;strokeColor=#6c8ebf;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="400" y="320" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="训练规划教练" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d9b66;fontSize=14;fontStyle=1" vertex="1" parent="4">
+          <mxGeometry x="640" y="160" width="160" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="属性：" style="text;html=1;strokeColor=#9673a6;fontSize=10;fontStyle=2" vertex="1" parent="4">
+          <mxGeometry x="645" y="195" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="- name: 训练规划教练" style="text;html=1;strokeColor=#d9b66;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="650" y="220" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="- role: 制定科学训练计划并动态优化" style="text;html=1;strokeColor=#d9b66;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="650" y="245" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="- max_tokens: 1400" style="text;html=1;strokeColor=#d9b66;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="650" y="270" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="- temperature: 0.35" style="text;html=1;strokeColor=#d9b66;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="650" y="295" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="方法：" style="text;html=1;strokeColor=#9673a6;fontSize=10;fontStyle=2" vertex="1" parent="4">
+          <mxGeometry x="645" y="325" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="+ process(state, context)" style="text;html=1;strokeColor=#d9b66;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="650" y="350" width="180" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="+ _format_docs()" style="text;html=1;strokeColor=#d9b66;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="650" y="375" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="技术指导教练" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="4">
+          <mxGeometry x="820" y="160" width="160" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="属性：" style="text;html=1;strokeColor=#6c8ebf;fontSize=10;fontStyle=2" vertex="1" parent="4">
+          <mxGeometry x="825" y="195" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="- name: 技术指导教练" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="830" y="220" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="- role: 提供动作指导和姿势分析" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="830" y="245" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="44" value="- max_tokens: 420" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="830" y="270" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="45" value="- temperature: 0.2" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="830" y="295" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="46" value="方法：" style="text;html=1;strokeColor=#6c8ebf;fontSize=10;fontStyle=2" vertex="1" parent="4">
+          <mxGeometry x="825" y="325" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="47" value="+ process(state, context)" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="830" y="350" width="180" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="48" value="+ _format_docs()" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="830" y="375" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="49" value="运动康复教练" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1" vertex="1" parent="4">
+          <mxGeometry x="1000" y="160" width="160" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="50" value="属性：" style="text;html=1;strokeColor=#9673a6;fontSize=10;fontStyle=2" vertex="1" parent="4">
+          <mxGeometry x="1005" y="195" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="51" value="- name: 运动康复教练" style="text;html=1;strokeColor=#9673a6;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="1010" y="220" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="52" value="- role: 损伤预防与恢复建议" style="text;html=1;strokeColor=#9673a6;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="1010" y="245" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="- depends_on: [planning, technique]" style="text;html=1;strokeColor=#9673a6;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="1010" y="270" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="54" value="- max_tokens: 420" style="text;html=1;strokeColor=#9673a6;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="1010" y="295" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="55" value="- temperature: 0.2" style="text;html=1;strokeColor=#9673a6;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="1010" y="320" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="56" value="方法：" style="text;html=1;strokeColor=#9673a6;fontSize=10;fontStyle=2" vertex="1" parent="4">
+          <mxGeometry x="1005" y="350" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="57" value="+ process(state, context)" style="text;html=1;strokeColor=#9673a6;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="1010" y="375" width="180" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="58" value="+ _format_docs()" style="text;html=1;strokeColor=#9673a6;fontSize=9;align=left" vertex="1" parent="4">
+          <mxGeometry x="1010" y="400" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="59" value="关系" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="4">
+          <mxGeometry x="1180" y="160" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="60" value="Coaches &lt;&gt; CoachAgent[]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d9b66;fontSize=11" vertex="1" parent="4">
+          <mxGeometry x="1180" y="200" width="260" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="61" value="Synthesizer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="4">
+          <mxGeometry x="640" y="380" width="520" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="62" value="综合输出器" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="61">
+          <mxGeometry x="650" y="410" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="63" value="整合所有教练建议，生成最终结构化响应" style="text;html=1;strokeColor=#6c8ebf;fontSize=10;align=left" vertex="1" parent="61">
+          <mxGeometry x="650" y="435" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="64" value="输出：" style="text;html=1;strokeColor=#9673a6;fontSize=10;fontStyle=2" vertex="1" parent="61">
+          <mxGeometry x="650" y="485" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="65" value="- final_response: str (Markdown格式)" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="61">
+          <mxGeometry x="660" y="510" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="66" value="- structured_response: Dict" style="text;html=1;strokeColor=#6c8ebf;fontSize=9;align=left" vertex="1" parent="61">
+          <mxGeometry x="660" y="535" width="200" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

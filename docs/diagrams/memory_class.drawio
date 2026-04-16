@@ -1,0 +1,198 @@
+<mxfile host="app.diagrams.net" modified="2026-04-07T00:00:00Z" agent="draw.io" version="22.1.0">
+  <diagram name="MemoryClass" id="memory-class-diagram">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" value="记忆管理系统 - 类图" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="200" y="20" width="600" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="工作记忆" style="swimlane;fillColor=#e1d5e7;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="80" y="100" width="240" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="WorkingMemory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="100" y="140" width="200" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="属性：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="3">
+          <mxGeometry x="110" y="170" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="- max_size: int" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="120" y="200" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="- messages: deque" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="120" y="230" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="方法：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="3">
+          <mxGeometry x="110" y="270" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="+ add_message(role, content)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="120" y="300" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="+ get_messages(): List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="120" y="330" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="+ get_context_string(): str" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="120" y="360" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="+ clear()" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="3">
+          <mxGeometry x="120" y="390" width="140" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="情景记忆" style="swimlane;fillColor=#e1d5e7;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="360" y="100" width="240" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="EpisodicMemory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="380" y="140" width="200" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="属性：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="13">
+          <mxGeometry x="390" y="170" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="- episodes: List[Dict]" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="13">
+          <mxGeometry x="400" y="200" width="220" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="方法：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="13">
+          <mxGeometry x="390" y="250" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="+ add_episode(question, answer, docs, metadata)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="13">
+          <mxGeometry x="400" y="280" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="+ get_recent_episodes(n): List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="13">
+          <mxGeometry x="400" y="310" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="+ search_episodes(keyword): List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="13">
+          <mxGeometry x="400" y="340" width="320" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="+ get_all_episodes(): List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="13">
+          <mxGeometry x="400" y="370" width="280" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="语义记忆" style="swimlane;fillColor=#e1d5e7;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="640" y="100" width="240" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="SemanticMemory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="660" y="140" width="200" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="属性：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="22">
+          <mxGeometry x="670" y="170" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="- concepts: Dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="22">
+          <mxGeometry x="680" y="200" width="180" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="- relationships: List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="22">
+          <mxGeometry x="680" y="230" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="方法：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="22">
+          <mxGeometry x="670" y="270" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="+ add_concept(concept, definition, examples)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="22">
+          <mxGeometry x="680" y="300" width="380" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="+ add_relationship(concept1, rel, concept2)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="22">
+          <mxGeometry x="680" y="330" width="320" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="+ get_concept(concept): Optional[Dict]" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="22">
+          <mxGeometry x="680" y="360" width="320" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="+ get_related_concepts(concept): List" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="22">
+          <mxGeometry x="680" y="390" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="感知记忆" style="swimlane;fillColor=#e1d5e7;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="920" y="100" width="240" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="PerceptualMemory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="940" y="140" width="200" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="属性：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="32">
+          <mxGeometry x="950" y="170" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="- document_features: Dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="200" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="- image_descriptions: Dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="230" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="- image_metadata: Dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="260" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="方法：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="32">
+          <mxGeometry x="950" y="300" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="+ add_document_features(doc_id, features)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="330" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="+ add_image_description(img_id, desc, metadata)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="360" width="360" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="+ get_document_features(doc_id)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="390" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="+ get_image_description(img_id)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="420" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="+ get_image_metadata(img_id)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="450" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="+ search_images_by_source(source)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="32">
+          <mxGeometry x="960" y="480" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="44" value="记忆管理器" style="swimlane;fillColor=#d4edda;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="360" y="440" width="380" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="45" value="MemoryManager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="0">
+          <mxGeometry x="380" y="480" width="340" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="46" value="属性：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="45">
+          <mxGeometry x="390" y="510" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="47" value="- working_memory: WorkingMemory" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="45">
+          <mxGeometry x="400" y="540" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="48" value="- episodic_memory: EpisodicMemory" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="45">
+          <mxGeometry x="400" y="570" width="320" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="49" value="- semantic_memory: SemanticMemory" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="45">
+          <mxGeometry x="400" y="600" width="320" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="50" value="- perceptual_memory: PerceptualMemory" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="45">
+          <mxGeometry x="400" y="630" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="51" value="方法：" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="45">
+          <mxGeometry x="390" y="670" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="52" value="+ record_interaction(question, answer, docs, metadata)" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="45">
+          <mxGeometry x="400" y="700" width="420" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="+ get_context_for_query(): str" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="45">
+          <mxGeometry x="400" y="730" width="280" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="54" value="+ summarize_memory(): Dict" style="text;html=1;strokeColor=#9673a6;fontSize=11;align=left" vertex="1" parent="45">
+          <mxGeometry x="400" y="760" width="300" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="55" value="关系" style="text;html=1;strokeColor=#6c8ebf;fontSize=12;fontStyle=2" vertex="1" parent="0">
+          <mxGeometry x="60" y="250" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="56" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeWidth=2;strokeColor=#9673a6;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=10;fontColor=#ffffff" vertex="1" parent="0" source="45" target="3">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="sourcePoint" />
+            <mxPoint as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="57" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeWidth=2;strokeColor=#9673a6;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=10;fontColor=#ffffff" vertex="1" parent="0" source="45" target="13">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="sourcePoint" />
+            <mxPoint as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="58" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeWidth=2;strokeColor=#9673a6;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=10;fontColor=#ffffff" vertex="1" parent="0" source="45" target="22">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="sourcePoint" />
+            <mxPoint as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="59" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeWidth=2;strokeColor=#9673a6;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=10;fontColor=#ffffff" vertex="1" parent="0" source="45" target="32">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint as="sourcePoint" />
+            <mxPoint as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -3134,6 +3134,7 @@ watch(
   align-items: end;
   gap: 8px;
   position: relative;
+  width: 100%;
 }
 
 .attach-btn {
@@ -3167,6 +3168,7 @@ watch(
 }
 
 .input-bar textarea {
+  width: 100%;
   min-height: 56px;
   max-height: 180px;
   resize: vertical;
@@ -3176,6 +3178,7 @@ watch(
   background: var(--color-bg);
   font: inherit;
   color: var(--color-text-primary);
+  box-sizing: border-box;
 }
 
 .send-btn,

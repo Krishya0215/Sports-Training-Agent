@@ -1,0 +1,298 @@
+<mxfile host="app.diagrams.net" modified="2025-01-01T00:00:00.000Z" agent="Claude" version="24.0.0">
+  <diagram name="RAG Retrieval Module" id="rag-module">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- VectorStoreService -->
+        <mxCell id="vectorStore" value="VectorStoreService" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="260" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="vectorStore_private" value="- vector_store: Chroma&#xa;- doc_processor: DocumentProcessor" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="vectorStore">
+          <mxGeometry y="30" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vectorStore_sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="vectorStore">
+          <mxGeometry y="90" width="260" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="vectorStore_public" value="+ __init__()&#xa;+ get_retriever()&#xa;+ load_documents()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="vectorStore">
+          <mxGeometry y="98" width="260" height="82" as="geometry" />
+        </mxCell>
+
+        <!-- DocumentProcessor -->
+        <mxCell id="docProcessor" value="DocumentProcessor" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="260" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="docProcessor_private" value="- use_markitdown: bool&#xa;- extract_images: bool&#xa;- image_description_enabled: bool&#xa;- markitdown: MarkItDown&#xa;- image_output_dir: Path&#xa;- md_splitter&#xa;- text_splitter" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="docProcessor">
+          <mxGeometry y="30" width="260" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="docProcessor_sep1" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="docProcessor">
+          <mxGeometry y="150" width="260" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="docProcessor_public" value="+ __init__()&#xa;+ process_pdf()&#xa;+ process_markdown()&#xa;+ process_text()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="docProcessor">
+          <mxGeometry y="158" width="260" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="docProcessor_sep2" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="docProcessor">
+          <mxGeometry y="253" width="260" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="docProcessor_private_methods" value="- _process_with_markitdown()&#xa;- _process_with_pypdf()&#xa;- _extract_and_describe_images()&#xa;- get_image_descriptions_for_document()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="docProcessor">
+          <mxGeometry y="261" width="260" height="119" as="geometry" />
+        </mxCell>
+
+        <!-- MultiQueryExpansion -->
+        <mxCell id="mqe" value="MultiQueryExpansion" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="680" y="40" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="mqe_private" value="- num_queries: int&#xa;- model&#xa;- prompt&#xa;- chain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="mqe">
+          <mxGeometry y="30" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mqe_sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="mqe">
+          <mxGeometry y="100" width="240" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="mqe_public" value="+ __init__()&#xa;+ generate_queries()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="mqe">
+          <mxGeometry y="108" width="240" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- HyDERetriever -->
+        <mxCell id="hyde" value="HyDERetriever" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="680" y="240" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="hyde_private" value="- model&#xa;- prompt&#xa;- chain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="hyde">
+          <mxGeometry y="30" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="hyde_sep" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="hyde">
+          <mxGeometry y="90" width="240" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="hyde_public" value="+ __init__()&#xa;+ generate_hypothetical_answer()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="hyde">
+          <mxGeometry y="98" width="240" height="62" as="geometry" />
+        </mxCell>
+
+        <!-- AdvancedRetriever -->
+        <mxCell id="advancedRetriever" value="AdvancedRetriever" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="360" y="520" width="340" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="advancedRetriever_private" value="- base_retriever&#xa;- config: dict&#xa;- use_multi_query: bool&#xa;- use_hyde: bool&#xa;- mq_expander&#xa;- hyde_retriever" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="advancedRetriever">
+          <mxGeometry y="30" width="340" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="advancedRetriever_sep1" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="advancedRetriever">
+          <mxGeometry y="130" width="340" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="advancedRetriever_public" value="+ __init__()&#xa;+ retrieve()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="advancedRetriever">
+          <mxGeometry y="138" width="340" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="advancedRetriever_sep2" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="advancedRetriever">
+          <mxGeometry y="200" width="340" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="advancedRetriever_private_methods" value="- _deduplicate_documents()&#xa;- _rerank_documents()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="advancedRetriever">
+          <mxGeometry y="208" width="340" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- RagSummarizeService -->
+        <mxCell id="ragService" value="RagSummarizeService" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;rounded=1;fontColor=#333333;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="360" y="280" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ragService_private" value="- vector_store&#xa;- retriever&#xa;- prompt_text&#xa;- prompt_template&#xa;- model&#xa;- chain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="ragService">
+          <mxGeometry y="30" width="300" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="ragService_sep1" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="ragService">
+          <mxGeometry y="125" width="300" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="ragService_public" value="+ __init__()&#xa;+ retrieve_docs()&#xa;+ rag_summarize()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="ragService">
+          <mxGeometry y="133" width="300" height="87" as="geometry" />
+        </mxCell>
+        <mxCell id="ragService_sep2" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#666666;" vertex="1" parent="ragService">
+          <mxGeometry y="220" width="300" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="ragService_private_methods" value="- _init_chain()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontSize=11;fontColor=#666666;" vertex="1" parent="ragService">
+          <mxGeometry y="228" width="300" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- External Dependencies -->
+        <mxCell id="chroma" value="Chroma&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="chroma_methods" value="+ as_retriever()&#xa;+ add_documents()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="chroma">
+          <mxGeometry y="30" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mdSplitter" value="MarkdownHeaderTextSplitter&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="820" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mdSplitter_methods" value="+ split_text()&#xa;+ split_documents()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="mdSplitter">
+          <mxGeometry y="30" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="textSplitter" value="RecursiveCharacterTextSplitter&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="920" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="textSplitter_methods" value="+ split_documents()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="textSplitter">
+          <mxGeometry y="30" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="markitdown" value="MarkItDown&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="720" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="markitdown_methods" value="+ convert()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="markitdown">
+          <mxGeometry y="30" width="180" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="model" value="LLM Model&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="820" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="model_methods" value="+ invoke()&#xa;+ generate_image_description()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="model">
+          <mxGeometry y="30" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="promptTemplate" value="PromptTemplate&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="940" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="promptTemplate_methods" value="+ from_template()&#xa;+ invoke()" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="promptTemplate">
+          <mxGeometry y="30" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="document" value="Document&#xa;(external)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3949ab;fontColor=#333333;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="40" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="document_attrs" value="+ page_content: str&#xa;+ metadata: dict" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=11;" vertex="1" parent="document">
+          <mxGeometry y="30" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Relationships -->
+        <mxCell id="rel1" value="creates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;fontSize=10;endArrow=diamondThin;startArrow=none;" edge="1" parent="1" source="vectorStore" target="docProcessor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel2" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="vectorStore" target="chroma">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel3" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="docProcessor" target="mdSplitter">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="700" />
+              <mxPoint x="170" y="820" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel4" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="docProcessor" target="textSplitter">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="700" />
+              <mxPoint x="170" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel5" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="docProcessor" target="markitdown">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="700" />
+              <mxPoint x="350" y="720" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel6" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="docProcessor" target="model">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel7" value="creates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#b85450;fontSize=10;endArrow=diamondThin;startArrow=none;" edge="1" parent="1" source="advancedRetriever" target="mqe">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="480" />
+              <mxPoint x="700" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel8" value="creates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#b85450;fontSize=10;endArrow=diamondThin;startArrow=none;" edge="1" parent="1" source="advancedRetriever" target="hyde">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="520" />
+              <mxPoint x="800" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel9" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="mqe" target="model">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="200" />
+              <mxPoint x="350" y="820" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel10" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="mqe" target="promptTemplate">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="200" />
+              <mxPoint x="350" y="940" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel11" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="hyde" target="model">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="320" />
+              <mxPoint x="350" y="820" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel12" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="hyde" target="promptTemplate">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="320" />
+              <mxPoint x="350" y="940" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel13" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="ragService" target="vectorStore">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel14" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="ragService" target="model">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="380" />
+              <mxPoint x="350" y="820" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel15" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#999999;fontSize=10;endArrow=open;startArrow=none;dashed=1;" edge="1" parent="1" source="ragService" target="promptTemplate">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="380" />
+              <mxPoint x="350" y="940" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel16" value="returns" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;fontSize=10;endArrow=open;startArrow=none;" edge="1" parent="1" source="vectorStore" target="document">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="130" />
+              <mxPoint x="960" y="90" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Title -->
+        <mxCell id="title" value="RAG Retrieval Module - Complete Class Diagram" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="520" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="Legend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#666666;fontColor=#333333;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="720" width="180" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_content" value="+ public&#xa;- private&#xa;--------&#xa;creates: creates instance&#xa;uses: depends on&#xa;returns: produces" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=10;spacingRight=10;overflow=hidden;rotatable=0;whiteSpace=wrap;html=1;fontSize=10;" vertex="1" parent="legend">
+          <mxGeometry y="30" width="180" height="110" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -8,11 +8,14 @@ from pathlib import Path
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from model.multimodal_model import multimodal_llm
-from rag.document_processor import DocumentProcessor
-from rag.vector_store import VectorStoreService
-from memory.memory_manager import MemoryManager
-from utils.logger_handler import logger
+from backend.model.multimodal_model import multimodal_llm
+from backend.rag.document_processor import DocumentProcessor
+from backend.rag.vector_store import VectorStoreService
+from backend.memory.memory_manager import MemoryManager
+from backend.utils.logger_handler import logger
+
+# 数据目录路径
+DATA_DIR = Path(__file__).parent.parent / "backend" / "data"
 
 
 def example_1_generate_image_description():
@@ -22,7 +25,7 @@ def example_1_generate_image_description():
     print("="*60)
     
     # 假设有一张训练图像
-    image_path = "data/extracted_images/sample_image.jpg"
+    image_path = str(DATA_DIR / "extracted_images" / "sample_image.jpg")
     
     # 生成简要描述
     result = multimodal_llm.generate_image_description(
@@ -53,7 +56,7 @@ def example_2_process_pdf_with_images():
     processor = DocumentProcessor()
     
     # 处理PDF文档
-    pdf_path = "data/运动训练基础理论.pdf"
+    pdf_path = str(DATA_DIR / "运动训练基础理论.pdf")
     documents = processor.process_pdf(pdf_path)
     
     # 分类文档
@@ -83,7 +86,7 @@ def example_3_store_and_retrieve():
     
     # 处理文档
     processor = DocumentProcessor()
-    documents = processor.process_pdf("data/运动训练基础理论.pdf")
+    documents = processor.process_pdf(str(DATA_DIR / "运动训练基础理论.pdf"))
     
     # 存入向量库
     vector_store = VectorStoreService()
@@ -194,7 +197,7 @@ def example_5_integrated_workflow():
     # 1. 处理PDF文档
     print("\n步骤1: 处理PDF文档")
     processor = DocumentProcessor()
-    documents = processor.process_pdf("data/运动训练基础理论.pdf")
+    documents = processor.process_pdf(str(DATA_DIR / "运动训练基础理论.pdf"))
     print(f"✅ 生成 {len(documents)} 个文档块")
     
     # 2. 存入向量库

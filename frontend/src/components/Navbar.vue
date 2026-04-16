@@ -21,7 +21,8 @@
       <div class="navbar-actions">
         <div class="user-menu" @click="toggleUserMenu" ref="userMenuRef">
           <div class="avatar">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <img v-if="user?.avatar_url" :src="user.avatar_url" class="avatar-img" alt="头像" />
+            <svg v-else width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
               <circle cx="10" cy="7" r="3"/>
               <path d="M4 18C4 14.6863 6.68629 12 10 12C13.3137 12 16 14.6863 16 18"/>
             </svg>
@@ -34,9 +35,9 @@
           <!-- 用户菜单下拉 -->
           <div class="user-dropdown" v-if="showUserMenu">
             <div class="dropdown-item" @click="goToProfile">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <circle cx="8" cy="5" r="2"/>
-                <path d="M4 13C4 11.3431 5.34315 10 7 10H9C10.6569 10 12 11.3431 12 13"/>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <circle cx="8" cy="5" r="2.5"/>
+                <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
               </svg>
               <span>个人资料</span>
             </div>
@@ -77,8 +78,7 @@ const toggleUserMenu = () => {
 
 const goToProfile = () => {
   showUserMenu.value = false
-  // 跳转到个人资料页（待实现）
-  console.log('跳转到个人资料')
+  router.push('/profile')
 }
 
 const handleLogout = async () => {
@@ -216,6 +216,15 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .user-info {

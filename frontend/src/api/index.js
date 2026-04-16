@@ -154,7 +154,8 @@ export default {
 
   loadKnowledge(forceReload = false) {
     return api.post('/knowledge/load', null, {
-      params: { force_reload: forceReload }
+      params: { force_reload: forceReload },
+      timeout: 300000  // 知识库加载最多等 5 分钟
     })
   },
 
@@ -212,6 +213,19 @@ export default {
 
   clearWorkingMemory() {
     return api.post('/memory/clear')
+  },
+
+  changePassword(currentPassword, newPassword) {
+    return api.put('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword
+    })
+  },
+
+  uploadAvatar(formData) {
+    return api.post('/auth/upload-avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
   },
 
   getChatHistory() {

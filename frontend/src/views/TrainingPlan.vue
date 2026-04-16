@@ -201,7 +201,7 @@
                 </div>
 
                 <div class="plan-actions">
-                  <button type="button" class="btn btn-primary" @click="openPlanDetail(currentPlan)">
+                  <button type="button" class="btn btn-day-badge" @click="openPlanDetail(currentPlan)">
                     <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                       <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -256,6 +256,9 @@
                         </button>
                         <button type="button" class="btn btn-outline small" @click="openEditModal(currentHistoryPlan)">
                           修改
+                        </button>
+                        <button type="button" class="btn btn-danger small" @click="removePlan(currentHistoryPlan)">
+                          删除
                         </button>
                       </div>
 
@@ -2084,6 +2087,22 @@ const CalendarPanel = defineComponent({
   border: none;
 }
 
+.btn-day-badge {
+  background: #c8e0ff;
+  color: #0f3f7d;
+  border: none;
+  box-shadow: none;
+}
+
+.btn-day-badge:hover {
+  background: #aed1ff;
+  box-shadow: 0 4px 16px rgba(15, 63, 125, 0.15);
+}
+
+.btn-day-badge .btn-icon {
+  stroke: #0f3f7d;
+}
+
 .btn-primary:hover {
   background: var(--primary-gradient-reverse);
   box-shadow: 0 12px 48px rgba(255, 107, 74, 0.25);
@@ -2199,7 +2218,7 @@ const CalendarPanel = defineComponent({
 .placeholder-card {
   background: var(--bg-elevated);
   border-radius: 24px;
-  padding: 28px;
+  padding: 20px;
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-soft);
   transition: all 0.3s ease;
@@ -2612,7 +2631,9 @@ const CalendarPanel = defineComponent({
 
 .current-plan-card,
 .history-card {
-  min-height: 220px;
+  /* min-height: 160px; */
+  max-height: 270px;
+  /* overflow: hidden; */
 }
 
 .history-nav {
@@ -2627,7 +2648,7 @@ const CalendarPanel = defineComponent({
 }
 
 .history-footer {
-  margin-top: 18px;
+  /* margin-top: 3px; */
   display: flex;
   justify-content: flex-end;
 }
@@ -2959,17 +2980,11 @@ const CalendarPanel = defineComponent({
 }
 
 .history-item {
-  background: var(--bg-primary);
-  border-radius: 20px;
-  padding: 18px;
-  border: 1px solid var(--border-light);
+  padding: 4px 0;
   transition: all 0.2s ease;
 }
 
 .history-item:hover {
-  border-color: var(--accent-orange);
-  box-shadow: var(--shadow-medium);
-  transform: translateY(-2px);
 }
 
 .history-item-header {

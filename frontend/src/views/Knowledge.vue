@@ -208,7 +208,7 @@ const docToDelete = ref(null)
 const stats = ref({
   totalDocs: 0,
   totalChunks: 0,
-  lastUpdate: '未知'
+  lastUpdate: '暂无数据'
 })
 
 const documents = ref([])
