@@ -1,0 +1,296 @@
+@startuml 系统总体架构图
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 80
+
+title <size:20>运动训练多智能体协同支持系统总体架构图</size>
+
+' ==================== 用户层 ====================
+package "用户层" as user_layer #E8F5E9 {
+    actor "用户" as user #green
+    note bottom of user
+        运动员/教练
+        通过Web界面交互
+    end note
+}
+
+' ==================== 前端展示层 ====================
+package "前端展示层\n(Vue.js + Element Plus)" as frontend_layer #E3F2FD {
+    rectangle "登录注册模块" as login_module {
+        [用户认证]
+        [密码找回]
+    }
+
+    rectangle "AI教练模块" as coach_module {
+        [智能对话界面]
+        [流式响应展示]
+        [多教练协同展示]
+    }
+
+    rectangle "知识库模块" as knowledge_module {
+        [知识文档管理]
+        [文档上传]
+        [知识检索]
+    }
+
+    rectangle "训练管理模块" as training_module {
+        [训练日历]
+        [训练记录]
+        [数据统计]
+    }
+
+    rectangle "个人中心模块" as profile_module {
+        [用户画像]
+        [训练偏好设置]
+        [健康状况管理]
+    }
+}
+
+' ==================== 后端服务层 ====================
+package "后端服务层\n(FastAPI)" as backend_layer #FFF3E0 {
+    rectangle "认证服务\n(AuthService)" as auth_service {
+        [用户注册]
+        [用户登录]
+        [Token验证]
+        [密码重置]
+    }
+
+    rectangle "API网关" as api_gateway {
+        [路由分发]
+        [请求验证]
+        [响应格式化]
+    }
+
+    rectangle "聊天服务" as chat_service {
+        [对话管理]
+        [流式响应]
+        [历史记录]
+    }
+
+    rectangle "知识库服务" as kb_service {
+        [文档上传处理]
+        [知识库加载]
+        [知识检索]
+    }
+
+    rectangle "记忆服务\n(MemoryService)" as memory_service {
+        [语义记忆读取]
+        [情景记忆读取]
+        [训练规律分析]
+        [记忆提示词构建]
+    }
+
+    rectangle "训练服务" as training_service {
+        [训练计划管理]
+        [训练记录存储]
+        [数据统计分析]
+    }
+}
+
+' ==================== 多智能体协同层 ====================
+package "多智能体协同系统\n(LangGraph)" as agent_layer #FCE4EC {
+    rectangle "请求路由器\n(Request Router)" as router {
+        [问题分类器]
+        [调度信号提取]
+        [教练选择器]
+    }
+
+    rectangle "专业教练智能体" as coaches {
+        rectangle "训练规划教练\n(Planning Coach)" as planning_coach #B3E5FC {
+            [制定训练计划]
+            [周期化安排]
+            [目标导向规划]
+        }
+
+        rectangle "技术指导教练\n(Technique Coach)" as technique_coach #C8E6C9 {
+            [动作指导]
+            [姿势分析]
+            [技术修正]
+        }
+
+        rectangle "运动康复教练\n(Recovery Coach)" as recovery_coach #FFCCBC {
+            [损伤预防]
+            [恢复建议]
+            [风险规避]
+        }
+    }
+
+    rectangle "综合输出器\n(Synthesizer)" as synthesizer {
+        [多教练意见整合]
+        [结构化输出]
+        [格式优化]
+    }
+
+    rectangle "工作流引擎\n(StateGraph)" as workflow_engine {
+        [状态管理]
+        [节点调度]
+        [并行执行]
+    }
+}
+
+' ==================== RAG检索系统 ====================
+package "RAG检索系统" as rag_layer #F3E5F5 {
+    rectangle "高级检索器\n(Advanced Retriever)" as advanced_retriever {
+        [MQE多查询扩展]
+        [HyDE假设文档]
+        [重排序优化]
+    }
+
+    rectangle "文档处理器\n(Document Processor)" as doc_processor {
+        [PDF解析]
+        [Markdown处理]
+        [文本分块]
+        [多模态提取]
+    }
+
+    rectangle "向量存储服务\n(Vector Store Service)" as vector_service {
+        [文档向量化]
+        [相似度检索]
+        [持久化管理]
+    }
+}
+
+' ==================== 记忆管理模块 ====================
+package "记忆管理模块\n(Memory Manager)" as memory_layer #E0F7FA {
+    rectangle "工作记忆\n(Working Memory)" as working_memory {
+        [当前对话上下文]
+        [会话管理]
+    }
+
+    rectangle "情景记忆\n(Episodic Memory)" as episodic_memory {
+        [查询历史记录]
+        [训练事件存储]
+        [学习事件追踪]
+    }
+
+    rectangle "语义记忆\n(Semantic Memory)" as semantic_memory {
+        [概念知识存储]
+        [用户画像知识]
+        [训练偏好知识]
+    }
+
+    rectangle "感知记忆\n(Perceptual Memory)" as perceptual_memory {
+        [文档特征存储]
+        [图像描述管理]
+    }
+
+    rectangle "记忆整合服务\n(Consolidation Service)" as consolidation {
+        [记忆提取与整合]
+        [短期记忆转长期]
+    }
+}
+
+' ==================== 数据存储层 ====================
+package "数据存储层" as data_layer #ECEFF1 {
+    database "向量数据库\n(Chroma)" as vector_db {
+        [文档向量索引]
+        [知识库向量]
+    }
+
+    database "关系数据库\n(SQLite)" as relational_db {
+        [用户表]
+        [训练记录表]
+        [记忆存储表]
+        [Token表]
+    }
+
+    folder "知识库文件" as knowledge_files {
+        [PDF文档]
+        [Markdown文档]
+        [文本文档]
+    }
+}
+
+' ==================== 模型服务层 ====================
+package "模型服务层\n(通义千问 API)" as model_layer #FFF8E1 {
+    cloud "大语言模型\n(ChatTongyi)" as llm {
+        [对话生成]
+        [推理决策]
+        [知识整合]
+    }
+
+    cloud "嵌入模型\n(DashScope)" as embedding_model {
+        [文本向量化]
+        [语义编码]
+    }
+}
+
+' ==================== 连接关系 ====================
+
+' 用户到前端
+user --> login_module : 登录/注册
+user --> coach_module : AI对话
+user --> knowledge_module : 知识管理
+user --> training_module : 训练管理
+user --> profile_module : 个人设置
+
+' 前端到后端
+login_module --> auth_service : 认证请求
+coach_module --> chat_service : 对话请求
+knowledge_module --> kb_service : 知识库操作
+training_module --> training_service : 训练数据
+profile_module --> memory_service : 画像更新
+
+' 后端内部连接
+api_gateway --> auth_service
+api_gateway --> chat_service
+api_gateway --> kb_service
+api_gateway --> training_service
+api_gateway --> memory_service
+
+' 后端到多智能体
+chat_service --> router : 路由请求
+chat_service --> memory_service : 获取记忆上下文
+
+' 多智能体内部流程
+router --> workflow_engine : 执行计划
+workflow_engine --> planning_coach : 第一批执行
+workflow_engine --> technique_coach : 第二批并行
+workflow_engine --> recovery_coach : 第二批并行
+planning_coach --> synthesizer : 规划结果
+technique_coach --> synthesizer : 技术建议
+recovery_coach --> synthesizer : 康复建议
+synthesizer --> workflow_engine : 综合响应
+
+' 多智能体到RAG
+workflow_engine --> advanced_retriever : 知识检索
+
+' RAG内部流程
+advanced_retriever --> vector_service : 向量检索
+doc_processor --> vector_service : 文档处理
+vector_service --> vector_db : 向量存储/查询
+
+' 记忆管理连接
+memory_service --> semantic_memory : 语义记忆
+memory_service --> episodic_memory : 情景记忆
+memory_service --> working_memory : 工作记忆
+memory_service --> perceptual_memory : 感知记忆
+consolidation --> semantic_memory : 记忆整合
+consolidation --> episodic_memory : 事件存储
+
+' 数据库连接
+vector_db --> embedding_model : 向量化
+memory_service --> relational_db : 记忆持久化
+auth_service --> relational_db : 用户数据
+training_service --> relational_db : 训练记录
+kb_service --> knowledge_files : 文件加载
+
+' 模型服务
+planning_coach --> llm : 调用LLM
+technique_coach --> llm : 调用LLM
+recovery_coach --> llm : 调用LLM
+synthesizer --> llm : 调用LLM
+router --> llm : 问题分类
+
+' RAG到模型
+advanced_retriever --> llm : HyDE生成
+doc_processor --> embedding_model : 文档嵌入
+
+' 工作流更新记忆
+workflow_engine --> memory_service : 更新记忆
+
+@enduml

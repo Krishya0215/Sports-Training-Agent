@@ -36,9 +36,13 @@ class VectorStoreService:
         从数据文件夹内读取知识库的数据文件，使用智能文档处理器处理
         并且要计算文件的md5值实现去重功能
         """
+        allowed_types = tuple(
+            f".{t}" if not t.startswith(".") else t
+            for t in chroma_conf["allowed_knowledge_file_types"]
+        )
         knowledge_files = listdir_with_allowed_type(
-            get_abs_path(chroma_conf["data_path"]), 
-            tuple(chroma_conf["allowed_knowledge_file_types"])
+            get_abs_path(chroma_conf["data_path"]),
+            allowed_types
         )
         
         for file_path in knowledge_files:

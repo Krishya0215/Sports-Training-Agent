@@ -137,35 +137,36 @@ class SportsTrainingAgent:
         """
         question = state["question"]
         chat_history = self.memory_manager.get_context_for_query()
-        
+
+        # state["context"] 在 query() 入口已填入 memory_prompt（含饮食/训练记录等），直接读取
+        memory_prompt = state.get("context", "") or ""
+
         logger.info(f"\n📝 直接生成回复 (无需RAG)")
+        logger.info(f"记忆上下文长度: {len(memory_prompt)} 字")
         logger.info(f"问题: {question}\n")
-        
+
         # 创建简化的提示词，用于聊天场景
         chat_prompt = PromptTemplate.from_template("""
-You are a friendly and professional AI fitness coach named 卡卡(KaKa).
+你是一个专业的运动训练AI教练，名字叫卡卡(KaKa)，风格温暖、鼓励、专业。
 
-Guidelines:
-- Be warm, encouraging, and supportive
-- Provide practical, actionable advice
-- Keep responses concise and engaging
-- Use natural, conversational language
-- When appropriate, suggest related fitness topics
+【铁律】只有用户明确说"帮我制定计划"、"给我一份方案"、"生成计划"等包含明确动作指令和计划词的请求时，才输出训练计划。其他所有情况禁止生成训练计划。
 
-Chat History:
+{memory_context}
+
+对话历史：
 {chat_history}
 
-User question: {question}
+用户输入：{question}
 
-Please respond naturally and helpfully. If the user's question is not fitness-related, 
-you can still chat politely, but try to guide the conversation back to fitness topics.
+请自然、简洁地回应。如果用户在陈述状态（如"我手腕受伤了"），先表达关心再给简短建议；如果是提问，简洁回答要点；结尾可以询问是否需要制定计划，但禁止直接生成计划。
 """)
-        
+
         chat_chain = chat_prompt | self.model | StrOutputParser()
-        
+
         answer = chat_chain.invoke({
             "question": question,
-            "chat_history": chat_history if chat_history else "无历史对话"
+            "chat_history": chat_history if chat_history else "无历史对话",
+            "memory_context": memory_prompt if memory_prompt else "暂无用户历史记录"
         })
         
         # 不使用知识库，所以context为空
@@ -230,26 +231,29 @@ you can still chat politely, but try to guide the conversation back to fitness t
         question = state["question"]
         context = state.get("context", "")
         chat_history = state.get("chat_history", "")
-        
+
         # 如果已经是直接回复模式，answer字段已经填充
         if state.get("answer"):
             logger.info(f"\n💬 使用已生成的直接回复")
             logger.info(f"✓ 答案生成完成\n")
             return state
-        
-        # RAG模式：需要生成答案
+
+        # RAG模式：需要生成答案，每次动态加载 prompt 确保文件改动即时生效
         logger.info(f"\n🤖 基于知识库生成答案")
-        
-        # 使用答案生成链
-        answer = self.answer_chain.invoke({
+
+        answer_prompt_text = load_prompt_by_key("answer_generation_prompt")
+        answer_prompt = PromptTemplate.from_template(answer_prompt_text)
+        answer_chain = answer_prompt | self.model | StrOutputParser()
+
+        answer = answer_chain.invoke({
             "question": question,
             "retrieved_context": context,
             "chat_history": chat_history if chat_history else "无历史对话"
         })
-        
+
         state["answer"] = answer
         logger.info(f"✓ 答案生成完成\n")
-        
+
         return state
     
     def _update_memory_node(self, state: AgentState) -> AgentState:

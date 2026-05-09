@@ -1,0 +1,92 @@
+graph TB
+    %% RAG检索系统架构 - Mermaid格式
+
+    Query[用户查询] --> MQE
+
+    subgraph RAGSystem["RAG检索系统"]
+        subgraph Retriever["高级检索器 (AdvancedRetriever)"]
+            MQE[多查询扩展<br/>MQE]
+            HyDE[假设文档生成<br/>HyDE]
+            Rerank[重排序优化<br/>Re-ranking]
+        end
+
+        subgraph DocProcessor["文档处理器 (DocumentProcessor)"]
+            Parser[文档解析<br/>PDF/Markdown/Text]
+            Multimodal[多模态处理<br/>文本/图像]
+            Chunking[分块策略<br/>语义分块]
+        end
+
+        VectorSvc[向量存储服务<br/>VectorStoreService]
+
+        MQE -->|多角度查询| HyDE
+        HyDE -->|候选文档| Rerank
+        Rerank -->|向量查询| VectorSvc
+
+        Parser -->|解析结果| Chunking
+        Multimodal -->|多模态提取| Chunking
+        Chunking -->|文档分块| VectorSvc
+    end
+
+    subgraph DataLayer["数据层"]
+        VectorDB[向量数据库<br/>Chroma]
+        Files[知识库文件<br/>PDF/MD/TXT]
+    end
+
+    subgraph ModelLayer["模型服务层"]
+        LLM[大语言模型<br/>通义千问]
+        Embedding[嵌入模型<br/>DashScope]
+    end
+
+    Result[检索结果] -.-> ResultOut((最终输出))
+
+    %% 数据流连接
+    Rerank --> Result
+
+    %% 外部服务连接
+    HyDE -->|生成假设文档| LLM
+    LLM -->|返回假设答案| HyDE
+
+    HyDE -->|请求向量化| Embedding
+    Embedding -->|返回向量| HyDE
+
+    VectorSvc -->|存储/查询| VectorDB
+    VectorDB -->|向量化| Embedding
+
+    Chunking -->|嵌入| Embedding
+    Embedding -->|返回向量| Chunking
+
+    Files -->|文件加载| Parser
+
+    %% 样式
+    classDef inputStyle fill:#fff2cc,stroke:#d6b656,stroke-width:2px
+    classDef retrieverStyle fill:#d4e1f5,stroke:#5c6bc0,stroke-width:2px
+    classDef docStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef vectorStyle fill:#e1d5e7,stroke:#5c6bc0,stroke-width:2px
+    classDef dataStyle fill:#cfd8dc,stroke:#546e7a,stroke-width:2px
+    classDef modelStyle fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,dasharray: 5 5
+    classDef outputStyle fill:#c8e6c9,stroke:#27ae60,stroke-width:2px
+
+    class Query inputStyle
+    class MQE,HyDE,Rerank retrieverStyle
+    class Parser,Multimodal,Chunking docStyle
+    class VectorSvc vectorStyle
+    class VectorDB,Files dataStyle
+    class LLM,Embedding modelStyle
+    class Result outputStyle
+
+    %% 技术说明
+    noteMQE[MQE (Multi-Query Extension)
+    - 从多个角度重写查询
+    - 提高检索召回率]
+
+    noteHyDE[HyDE (Hypothetical Document Embeddings)
+    - 生成假设答案
+    - 基于语义而非字面匹配]
+
+    noteRerank[Re-ranking
+    - 评估文档相关性
+    - 优化检索精度]
+
+    noteMQE -.-> MQE
+    noteHyDE -.-> HyDE
+    noteRerank -.-> Rerank

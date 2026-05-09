@@ -92,15 +92,7 @@
                 </div>
               </div>
 
-              <div class="plan-content">
-                <h3 class="content-title">
-                  <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                  计划内容
-                </h3>
-                <div class="content-body markdown-content" v-html="renderPlanContent(selectedPlan.content)"></div>
-              </div>
+              <div class="markdown-content" v-html="renderPlanContent(selectedPlan.content, { skipFirstHeading: true })"></div>
 
               <div class="plan-actions">
                 <button type="button" class="btn btn-primary" @click="openWeekdayModal(selectedPlan)">
@@ -186,11 +178,11 @@
 
                 <div class="plan-card-header">
                   <div>
-                    <p class="card-label">Current Plan</p>
+                    <p class="card-label">当前计划</p>
                     <h2 class="card-title">{{ currentPlan.title }}</h2>
                     <!-- <p class="card-subtitle">{{ planSubtitle(currentPlan) }}</p> -->
                   </div>
-                  <div v-if="currentPlan.created_from_ai" class="badge badge-ai">AI 生成</div>
+                  <!-- <div v-if="currentPlan.created_from_ai" class="badge badge-ai">AI 生成</div> -->
                 </div>
 
                 <div class="plan-tags">
@@ -226,10 +218,7 @@
               </div>
               <div class="dashboard-sidebar">
                 <div class="history-card">
-                  <div class="card-header">
-                    <h3>历史训练计划</h3>
-                  </div>
-
+                  <p class="card-label">历史计划</p>
                   <div v-if="historyPlans.length" class="history-list">
                     <div class="history-item">
                       <div class="history-item-header">
@@ -237,7 +226,7 @@
                           <h4>{{ currentHistoryPlan.title }}</h4>
                           <p class="item-subtitle">{{ currentHistoryPlan.goal || 'AI 教练推荐' }}</p>
                         </div>
-                        <span v-if="currentHistoryPlan.created_from_ai" class="badge badge-ai small">AI</span>
+                        <!-- <span v-if="currentHistoryPlan.created_from_ai" class="badge badge-ai small">AI</span> -->
                       </div>
 
                       <div class="item-tags">
@@ -340,21 +329,6 @@
             <!-- 顶部：管理你的训练计划 + 当前计划占位 + 历史计划占位 -->
             <div class="dashboard-top">
               <div class="placeholder-card current-placeholder">
-                <!-- <div class="management-intro">
-                  <div class="management-text">
-                    <p class="card-label">Training Plans</p>
-                    <h2 class="management-title">管理你的训练计划</h2>
-                    <p class="management-description">创建你的第一份训练计划，并在日历中查看后续训练安排。</p>
-                  </div>
-                  <button type="button" class="btn btn-primary management-create-btn" @click="goCreatePlan">
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 5v14M5 12h14"/>
-                    </svg>
-                    创建首个计划
-                  </button>
-                </div>
-
-                <div class="card-section-divider"></div> -->
 
                 <div class="placeholder-illustration">
                   <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -656,10 +630,7 @@
                 </div>
               </div>
             </div>
-            <div class="plan-content">
-              <h3 class="content-title">计划内容</h3>
-              <div class="content-body markdown-content" v-html="renderPlanContent(planDetail.content)"></div>
-            </div>
+            <div class="markdown-content" v-html="renderPlanContent(planDetail.content, { skipFirstHeading: true })"></div>
           </div>
         </div>
       </div>
@@ -843,17 +814,21 @@ watch(historyPlans, (plans) => {
 })
 
 const getDisplayPlanTitle = (title = '', content = '') => {
-  const cleanedTitle = String(title || '')
-    .replace(/^#+\s*/, '')
-    .replace(/^计划标题[:：]\s*/i, '')
-    .trim()
+  const stripParens = (s) => s.replace(/\s*[（(][^）)]*[）)]\s*$/, '').trim()
+
+  const cleanedTitle = stripParens(
+    String(title || '')
+      .replace(/^#+\s*/, '')
+      .replace(/^计划标题[:：]\s*/i, '')
+      .trim()
+  )
 
   if (cleanedTitle) return cleanedTitle
 
   const lines = String(content || '').replace(/\r\n/g, '\n').split('\n').map((line) => line.trim()).filter(Boolean)
   const titleLine = lines.find((line) => /^#\s+/.test(line) || /^计划标题[:：]/.test(line) || /^#\s*计划标题[:：]?/i.test(line))
   return titleLine
-    ? String(titleLine).replace(/^#\s*/, '').replace(/^计划标题[:：]\s*/i, '').trim()
+    ? stripParens(String(titleLine).replace(/^#\s*/, '').replace(/^计划标题[:：]\s*/i, '').trim())
     : ''
 }
 
@@ -939,6 +914,7 @@ const renderPlanContent = (content = '', opts = {}) => {
   let inBlockquote = false
   let inTable = false
   let tableHeaderParsed = false
+  let skippedFirstHeading = !opts.skipFirstHeading
   let inTrainingDayCard = false
   let skippedFirstDayHeading = false
 
@@ -1077,6 +1053,10 @@ const renderPlanContent = (content = '', opts = {}) => {
       closeList()
       closeParagraph()
       const level = Math.min(4, headingMatch[1].length)
+      if (level <= 2 && !skippedFirstHeading) {
+        skippedFirstHeading = true
+        continue
+      }
       html.push(`<h${level}>${formatInlineMarkdown(headingMatch[2].trim())}</h${level}>`)
       continue
     }
@@ -1111,6 +1091,10 @@ const renderPlanContent = (content = '', opts = {}) => {
       closeBlockquote()
       closeList()
       closeParagraph()
+      if (!skippedFirstHeading) {
+        skippedFirstHeading = true
+        continue
+      }
       html.push(`<h1>${formatInlineMarkdown(line.replace(/^计划标题[:：]\s*/, ''))}</h1>`)
       continue
     }
@@ -2654,7 +2638,7 @@ const CalendarPanel = defineComponent({
 }
 
 .card-label {
-  font-size: 10px;
+  font-size: 15px;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -2709,6 +2693,10 @@ const CalendarPanel = defineComponent({
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.plan-actions .btn {
+  padding: 7px 14px;
 }
 
 .plan-actions .action-group {
@@ -3354,7 +3342,7 @@ const CalendarPanel = defineComponent({
 }
 
 :deep(.calendar-day:not(.empty):hover) {
-  border-color: var(--accent-orange);
+  border-color: var(--border-light);
   box-shadow: var(--shadow-medium);
   transform: translateY(-3px);
 }
@@ -3392,8 +3380,8 @@ const CalendarPanel = defineComponent({
 }
 
 :deep(.calendar-day.active) {
-  background: transparent;
-  border-color: var(--accent-orange);
+  background: rgba(0, 113, 227, 0.06);
+  border-color: transparent;
 }
 
 :deep(.calendar-day.active .day-number) {

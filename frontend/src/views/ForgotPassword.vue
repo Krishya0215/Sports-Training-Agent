@@ -69,11 +69,7 @@
         <div v-if="successMessage" class="success-message">
           {{ successMessage }}
         </div>
-        
-        <div v-if="testCode" class="test-code-message">
-          测试验证码：{{ testCode }}
-        </div>
-        
+
         <button type="submit" class="reset-btn" :disabled="loading">
           {{ loading ? '重置中...' : '重置密码' }}
         </button>
@@ -108,7 +104,6 @@ const codeSending = ref(false)
 const countdown = ref(0)
 const errorMessage = ref('')
 const successMessage = ref('')
-const testCode = ref('') // 用于显示测试验证码
 
 let countdownTimer = null
 
@@ -120,7 +115,6 @@ const handleSendCode = async () => {
   
   errorMessage.value = ''
   successMessage.value = ''
-  testCode.value = ''
   codeSending.value = true
   
   try {
@@ -128,11 +122,7 @@ const handleSendCode = async () => {
     
     if (result.success) {
       successMessage.value = result.message
-      // 显示测试验证码（仅用于开发测试）
-      if (result.code) {
-        testCode.value = result.code
-      }
-      
+
       // 开始倒计时
       countdown.value = 60
       countdownTimer = setInterval(() => {
@@ -314,17 +304,6 @@ onUnmounted(() => {
   color: #34c759;
   font-size: 14px;
   text-align: center;
-}
-
-.test-code-message {
-  padding: 12px;
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.2);
-  border-radius: var(--radius-md);
-  color: #d97706;
-  font-size: 14px;
-  text-align: center;
-  font-weight: 600;
 }
 
 .reset-btn {

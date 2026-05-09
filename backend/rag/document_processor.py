@@ -19,6 +19,14 @@ except ImportError:
     logger.warning("MarkItDown未安装，将使用基础PDF处理")
 
 try:
+    import pytesseract
+    from pdf2image import convert_from_path
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+    logger.warning("pytesseract/pdf2image未安装，OCR功能不可用")
+
+try:
     from backend.model.multimodal_model import multimodal_llm
     MULTIMODAL_AVAILABLE = True
 except ImportError:
@@ -89,8 +97,8 @@ class DocumentProcessor:
             markdown_content = result.text_content
             
             if not markdown_content:
-                logger.warning(f"MarkItDown转换结果为空: {file_path}")
-                return []
+                logger.warning(f"MarkItDown转换结果为空，回退到PyPDF: {file_path}")
+                return self._process_with_pypdf(file_path)
             
             # 提取图像并生成描述
             image_docs = []
@@ -132,13 +140,19 @@ class DocumentProcessor:
         """使用PyPDF处理PDF（备用方案）"""
         try:
             from langchain_community.document_loaders import PyPDFLoader
-            
+
             loader = PyPDFLoader(file_path)
             pages = loader.load()
-            
+
+            # 检查是否提取到有效文本（扫描版PDF文字层为空）
+            total_text = "".join(p.page_content.strip() for p in pages)
+            if not total_text and OCR_AVAILABLE:
+                logger.info(f"PyPDF未提取到文本，尝试OCR: {file_path}")
+                return self._process_with_ocr(file_path)
+
             # 分割文档
             documents = self.text_splitter.split_documents(pages)
-            
+
             # 添加元数据
             for doc in documents:
                 doc.metadata.update({
@@ -147,13 +161,58 @@ class DocumentProcessor:
                     "processing_method": "pypdf",
                     "content_type": "pdf"
                 })
-            
+
             logger.info(f"PyPDF处理完成: {file_path}, 生成 {len(documents)} 个文档块")
             return documents
-            
+
         except Exception as e:
             logger.error(f"PyPDF处理失败 {file_path}: {e}")
             return []
+
+    def _process_with_ocr(self, file_path: str) -> List[Document]:
+        """使用 OCR（tesseract）处理扫描版 PDF"""
+        try:
+            logger.info(f"开始 OCR 处理: {file_path}")
+            # 将 PDF 每页渲染为图像
+            images = convert_from_path(file_path, dpi=200)
+            logger.info(f"PDF 共 {len(images)} 页，开始逐页 OCR...")
+
+            all_text_parts = []
+            for i, img in enumerate(images):
+                text = pytesseract.image_to_string(img, lang="chi_sim+eng")
+                text = text.strip()
+                if text:
+                    all_text_parts.append(text)
+                if (i + 1) % 20 == 0:
+                    logger.info(f"  OCR 进度: {i+1}/{len(images)} 页")
+
+            full_text = "\n\n".join(all_text_parts)
+            if not full_text.strip():
+                logger.error(f"OCR 未提取到任何文本: {file_path}")
+                return []
+
+            # 分块
+            chunks = self.text_splitter.split_text(full_text)
+            documents = [
+                Document(
+                    page_content=chunk,
+                    metadata={
+                        "source": file_path,
+                        "file_name": Path(file_path).name,
+                        "processing_method": "ocr_tesseract",
+                        "content_type": "scanned_pdf"
+                    }
+                )
+                for chunk in chunks
+            ]
+
+            logger.info(f"OCR 处理完成: {file_path}, 生成 {len(documents)} 个文档块")
+            return documents
+
+        except Exception as e:
+            logger.error(f"OCR 处理失败 {file_path}: {e}")
+            return []
+
     
     def process_markdown(self, file_path: str) -> List[Document]:
         """处理Markdown文件"""

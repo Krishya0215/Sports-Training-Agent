@@ -29,6 +29,7 @@ class MemoryService:
         context = {
             "semantic_profile": self.get_semantic_profile(user_id),
             "recent_episodes": self.get_recent_episodes(user_id, limit=10),
+            "recent_diet_episodes": self.get_episodes_by_type(user_id, "diet_recorded", limit=5),
             "training_patterns": self.get_training_patterns(user_id),
             "user_profile": db.get_user_profile(user_id) or {}
         }
@@ -38,7 +39,8 @@ class MemoryService:
 
         self.logger.debug(f"获取用户记忆上下文: user_id={user_id}, "
                          f"semantic_facts={len(context['semantic_profile'])}, "
-                         f"episodes={len(context['recent_episodes'])}")
+                         f"episodes={len(context['recent_episodes'])}, "
+                         f"diet_episodes={len(context['recent_diet_episodes'])}")
         return context
 
     def get_semantic_profile(self, user_id: int) -> Dict[str, Dict[str, Any]]:
@@ -384,7 +386,7 @@ class MemoryService:
                 if risks:
                     prompt_parts.append(f"- 风险因素: {', '.join(risks)}")
 
-        # 最近动态
+        # 最近动态（训练、计划等）
         recent_episodes = context.get("recent_episodes", [])
         if recent_episodes:
             prompt_parts.append("\n【最近动态】")
@@ -392,6 +394,25 @@ class MemoryService:
                 event_time = ep.get("event_time", "")[:10]  # 只取日期
                 summary = ep.get("event_summary", ep.get("event_type", ""))
                 prompt_parts.append(f"- {event_time}: {summary}")
+
+        # 最近饮食记录（标注今日日期，让 LLM 能理解"今天"对应哪天）
+        diet_episodes = context.get("recent_diet_episodes", [])
+        if diet_episodes:
+            today = datetime.now().strftime("%Y-%m-%d")
+            prompt_parts.append(f"\n【近期饮食记录】（今天是 {today}）")
+            for ep in diet_episodes:
+                event_time = ep.get("event_time", "")[:10]
+                summary = ep.get("event_summary", "")
+                payload = ep.get("payload", {})
+                calories = payload.get("calories")
+                protein = payload.get("protein")
+                date_label = "今日" if event_time == today else event_time
+                line = f"- {date_label} {summary}"
+                if calories:
+                    line += f"，热量 {calories} kcal"
+                if protein:
+                    line += f"，蛋白质 {protein} g"
+                prompt_parts.append(line)
 
         return "\n".join(prompt_parts) if len(prompt_parts) > 1 else "暂无用户记忆数据"
 

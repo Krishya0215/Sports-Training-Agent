@@ -1,0 +1,121 @@
+@startuml RAG检索系统架构图
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+
+title <size:18>RAG检索系统详细架构</size>
+
+package "RAG检索系统" as rag #F3E5F5 {
+
+    component "高级检索器\n(AdvancedRetriever)" as retriever {
+        package "多查询扩展\n(MQE)" as mqe {
+            [查询重写]
+            [多角度生成]
+            [查询优化]
+        }
+
+        package "假设文档生成\n(HyDE)" as hyde {
+            [假设答案生成]
+            [答案向量化]
+            [语义检索]
+        }
+
+        package "重排序优化\n(Re-ranking)" as rerank {
+            [相关性评分]
+            [结果排序]
+            [Top-K筛选]
+        }
+    }
+
+    component "文档处理器\n(DocumentProcessor)" as doc_processor {
+        package "文档解析" as parser {
+            [PDF解析器]
+            [Markdown解析器]
+            [文本解析器]
+        }
+
+        package "多模态处理" as multimodal {
+            [文本提取]
+            [图像识别]
+            [图表解析]
+        }
+
+        package "分块策略" as chunking {
+            [语义分块]
+            [重叠处理]
+            [元数据标注]
+        }
+    }
+
+    component "向量存储服务\n(VectorStoreService)" as vector_svc {
+        [文档向量化]
+        [相似度检索]
+        [持久化管理]
+    }
+}
+
+' 数据层
+database "向量数据库\n(Chroma)" as vector_db #ECEFF1 {
+    [文档向量索引]
+    [元数据存储]
+}
+
+folder "知识库文件" as files #ECEFF1 {
+    file "PDF文档.pdf" as pdf
+    file "知识文档.md" as md
+    file "文本文档.txt" as txt
+}
+
+' 模型服务
+cloud "嵌入模型\n(DashScope)" as embedding #FFF8E1
+cloud "大语言模型\n(通义千问)" as llm #FFF8E1
+
+' 输入输出
+interface "用户查询" as query_in
+interface "检索结果" as result_out
+
+' 文档处理流程
+files --> doc_processor : 文档加载
+parser --> chunking : 解析结果
+chunking --> vector_svc : 文档分块
+multimodal --> chunking : 多模态提取
+
+' 向量化存储
+vector_svc --> embedding : 请求向量化
+embedding --> vector_svc : 返回向量
+vector_svc --> vector_db : 存储向量
+
+' 检索流程
+query_in --> mqe : 用户查询
+mqe --> hyde : 扩展查询
+hyde --> llm : 生成假设文档
+llm --> hyde : 假设答案
+hyde --> embedding : 向量化
+embedding --> vector_svc : 向量查询
+vector_svc --> vector_db : 相似度检索
+vector_db --> vector_svc : 返回候选
+vector_svc --> rerank : 候选文档
+rerank --> result_out : 排序结果
+
+' 说明
+note bottom of mqe
+  MQE (Multi-Query Expansion)
+  - 从多个角度重写查询
+  - 提高检索召回率
+end note
+
+note bottom of hyde
+  HyDE (Hypothetical Document Embeddings)
+  - 生成假设答案
+  - 基于语义而非字面匹配
+end note
+
+note bottom of rerank
+  Re-ranking
+  - 评估文档相关性
+  - 优化检索精度
+end note
+
+@enduml

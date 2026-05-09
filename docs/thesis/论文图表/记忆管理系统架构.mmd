@@ -1,0 +1,118 @@
+graph TB
+    %% 记忆管理系统架构 - Mermaid格式
+
+    subgraph MemoryModule["记忆管理模块 (Memory Manager)"]
+        MemoryService[记忆服务<br/>MemoryService]
+
+        subgraph Working["工作记忆 (Working Memory)<br/>短期记忆 | 容量: 5轮对话"]
+            Ctx[对话上下文]
+            Queue[消息队列]
+            Session[会话管理]
+        end
+
+        subgraph Episodic["情景记忆 (Episodic Memory)<br/>中期记忆 | 记录事件与查询"]
+            History[查询历史]
+            TrainingEvents[训练事件]
+            LearningEvents[学习事件]
+        end
+
+        subgraph Semantic["语义记忆 (Semantic Memory)<br/>长期记忆 | 概念化知识"]
+            Concepts[概念知识库]
+            UserProfile[用户画像]
+            Preferences[训练偏好]
+            Constraints[约束条件]
+            Risks[风险因素]
+        end
+
+        subgraph Perceptual["感知记忆 (Perceptual Memory)<br/>感知特征 | 文档与图像"]
+            DocFeatures[文档特征]
+            ImageDesc[图像描述]
+        end
+
+        Consolidation[记忆整合服务<br/>Consolidation]
+
+        %% 记忆写入流程
+        MemoryService -->|写入上下文| Ctx
+        MemoryService -->|记录事件| History
+        MemoryService -->|更新知识| Concepts
+        MemoryService -->|存储特征| DocFeatures
+
+        %% 记忆读取流程
+        MemoryService -->|获取上下文| Queue
+        MemoryService -->|查询历史| TrainingEvents
+        MemoryService -->|获取画像| UserProfile
+        MemoryService -->|获取描述| ImageDesc
+
+        %% 记忆整合
+        Consolidation -->|提取整合| Concepts
+        Consolidation -->|事件存储| TrainingEvents
+    end
+
+    subgraph External["外部服务"]
+        Agent[多智能体系统]
+        API[后端API<br/>FastAPI]
+        LLM[大语言模型]
+    end
+
+    subgraph Database["数据存储"]
+        SQLDB[关系数据库<br/>SQLite]
+    end
+
+    %% 交互连接
+    Agent -->|记录交互| MemoryService
+    API -->|请求记忆| Ctx
+    API -->|构建提示词| MemoryService
+    MemoryService -.->|返回记忆| API
+    API -->|注入提示词| LLM
+
+    %% 持久化连接
+    Ctx -.->|持久化| SQLDB
+    History -.->|持久化| SQLDB
+    Concepts -.->|持久化| SQLDB
+    DocFeatures -.->|持久化| SQLDB
+    Consolidation -.->|持久化| SQLDB
+
+    %% 样式
+    classDef serviceStyle fill:#80cbc4,stroke:#004d40,stroke-width:2px
+    classDef workingStyle fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef episodicStyle fill:#b2dfdb,stroke:#00796b,stroke-width:2px
+    classDef semanticStyle fill:#80cbc4,stroke:#004d40,stroke-width:2px
+    classDef perceptualStyle fill:#e0f2f1,stroke:#00695c,stroke-width:2px
+    classDef consolidationStyle fill:#26a69a,stroke:#004d40,stroke-width:2px
+    classDef externalStyle fill:#ffffff,stroke:#999999,stroke-width:2px,dasharray: 5 5
+    classDef dbStyle fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+
+    class MemoryService,Consolidation serviceStyle
+    class Ctx,Queue,Session workingStyle
+    class History,TrainingEvents,LearningEvents episodicStyle
+    class Concepts,UserProfile,Preferences,Constraints,Risks semanticStyle
+    class DocFeatures,ImageDesc perceptualStyle
+    class Agent,API,LLM externalStyle
+    class SQLDB dbStyle
+
+    %% 记忆类型说明
+    noteWorking[工作记忆特点:
+    - 短期存储
+    - 容量: 5轮对话
+    - 实时更新]
+
+    noteEpisodic[情景记忆特点:
+    - 中期存储
+    - 记录查询历史
+    - 记录训练/学习事件]
+
+    noteSemantic[语义记忆特点:
+    - 长期存储
+    - 概念化知识
+    - 用户画像管理
+    - 训练偏好跟踪]
+
+    notePerceptual[感知记忆特点:
+    - 存储文档特征
+    - 存储图像描述
+    - 多模态信息管理]
+
+    noteWorking -.-> Working
+    noteEpisodic -.-> Episodic
+    noteSemantic -.-> Semantic
+    notePerceptual -.-> Perceptual

@@ -187,8 +187,8 @@
                 <label>性别</label>
                 <select v-model="profileForm.gender">
                   <option value="">请选择</option>
-                  <option value="male">男</option>
                   <option value="female">女</option>
+                  <option value="male">男</option>                 
                   <option value="other">其他</option>
                 </select>
               </div>

@@ -1,0 +1,233 @@
+<mxfile host="Electron" modified="2024-01-01T00:00:00.000Z" agent="draw.io" version="21.0.0">
+  <diagram name="RAG检索模块时序图" id="rag-seq">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="RAG 检索模块 — 时序图（MQE + HyDE）" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="900" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Lifeline Headers ===== -->
+        <!-- Caller -->
+        <mxCell id="h_caller" value="调用方&#xa;(MultiAgent / GraphAgent)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="150" height="60" as="geometry" />
+        </mxCell>
+        <!-- AdvancedRetriever -->
+        <mxCell id="h_ar" value="AdvancedRetriever" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="260" y="80" width="140" height="60" as="geometry" />
+        </mxCell>
+        <!-- MultiQueryExpansion -->
+        <mxCell id="h_mqe" value="MultiQueryExpansion&#xa;(MQE)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="470" y="80" width="140" height="60" as="geometry" />
+        </mxCell>
+        <!-- HyDERetriever -->
+        <mxCell id="h_hyde" value="HyDERetriever&#xa;(HyDE)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="680" y="80" width="140" height="60" as="geometry" />
+        </mxCell>
+        <!-- LLM -->
+        <mxCell id="h_llm" value="LLM&#xa;(通义千问)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="890" y="80" width="130" height="60" as="geometry" />
+        </mxCell>
+        <!-- VectorStore -->
+        <mxCell id="h_vs" value="VectorStore&#xa;(ChromaDB)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#647687;strokeColor=#314354;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="80" width="130" height="60" as="geometry" />
+        </mxCell>
+        <!-- Dedup/Rerank -->
+        <mxCell id="h_pp" value="后处理&#xa;(去重/重排序)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="80" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Lifelines ===== -->
+        <mxCell id="ll_caller" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;strokeWidth=2;" edge="1" source="llc_s" target="llc_t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="llc_s" value="" style="point;" vertex="1" parent="1"><mxGeometry x="115" y="140" as="geometry"/></mxCell>
+        <mxCell id="llc_t" value="" style="point;" vertex="1" parent="1"><mxGeometry x="115" y="940" as="geometry"/></mxCell>
+
+        <mxCell id="ll_ar" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" source="llar_s" target="llar_t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="llar_s" value="" style="point;" vertex="1" parent="1"><mxGeometry x="330" y="140" as="geometry"/></mxCell>
+        <mxCell id="llar_t" value="" style="point;" vertex="1" parent="1"><mxGeometry x="330" y="940" as="geometry"/></mxCell>
+
+        <mxCell id="ll_mqe" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#d6b656;strokeWidth=2;" edge="1" source="llmqe_s" target="llmqe_t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="llmqe_s" value="" style="point;" vertex="1" parent="1"><mxGeometry x="540" y="140" as="geometry"/></mxCell>
+        <mxCell id="llmqe_t" value="" style="point;" vertex="1" parent="1"><mxGeometry x="540" y="940" as="geometry"/></mxCell>
+
+        <mxCell id="ll_hyde" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#b85450;strokeWidth=2;" edge="1" source="llhyde_s" target="llhyde_t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="llhyde_s" value="" style="point;" vertex="1" parent="1"><mxGeometry x="750" y="140" as="geometry"/></mxCell>
+        <mxCell id="llhyde_t" value="" style="point;" vertex="1" parent="1"><mxGeometry x="750" y="940" as="geometry"/></mxCell>
+
+        <mxCell id="ll_llm" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" source="llllm_s" target="llllm_t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="llllm_s" value="" style="point;" vertex="1" parent="1"><mxGeometry x="955" y="140" as="geometry"/></mxCell>
+        <mxCell id="llllm_t" value="" style="point;" vertex="1" parent="1"><mxGeometry x="955" y="940" as="geometry"/></mxCell>
+
+        <mxCell id="ll_vs" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#314354;strokeWidth=2;" edge="1" source="llvs_s" target="llvs_t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="llvs_s" value="" style="point;" vertex="1" parent="1"><mxGeometry x="1155" y="140" as="geometry"/></mxCell>
+        <mxCell id="llvs_t" value="" style="point;" vertex="1" parent="1"><mxGeometry x="1155" y="940" as="geometry"/></mxCell>
+
+        <mxCell id="ll_pp" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#BD7000;strokeWidth=2;" edge="1" source="llpp_s" target="llpp_t" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="llpp_s" value="" style="point;" vertex="1" parent="1"><mxGeometry x="1355" y="140" as="geometry"/></mxCell>
+        <mxCell id="llpp_t" value="" style="point;" vertex="1" parent="1"><mxGeometry x="1355" y="940" as="geometry"/></mxCell>
+
+        <!-- ===== Step 1: Entry ===== -->
+        <mxCell id="sep1" value="① 发起检索请求" style="text;html=1;strokeColor=none;fillColor=#dae8fc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="10" y="158" width="140" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s1_a1" value="retrieve(question)" style="html=1;endArrow=open;endFill=0;strokeColor=#82b366;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="115" y="192" as="sourcePoint"/>
+            <mxPoint x="330" y="192" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== Step 2: HyDE branch ===== -->
+        <mxCell id="sep2" value="② 策略1：HyDE 假设文档嵌入" style="text;html=1;strokeColor=none;fillColor=#f8cecc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="10" y="218" width="240" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s2_a1" value="generate_hypothetical_answer(question)" style="html=1;endArrow=open;endFill=0;strokeColor=#6c8ebf;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="255" as="sourcePoint"/>
+            <mxPoint x="750" y="255" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s2_a2" value="hyde_prompt | LLM —— 生成假设答案文本" style="html=1;endArrow=open;endFill=0;strokeColor=#b85450;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="280" as="sourcePoint"/>
+            <mxPoint x="955" y="280" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s2_a3" value="hypothetical_answer" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#9673a6;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="955" y="305" as="sourcePoint"/>
+            <mxPoint x="750" y="305" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s2_a4" value="base_retriever.invoke(hypothetical_answer)" style="html=1;endArrow=open;endFill=0;strokeColor=#b85450;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="330" as="sourcePoint"/>
+            <mxPoint x="1155" y="330" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s2_a5" value="hyde_docs (向量相似文档)" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#314354;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1155" y="355" as="sourcePoint"/>
+            <mxPoint x="330" y="355" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== Step 3: MQE branch ===== -->
+        <mxCell id="sep3" value="③ 策略2：MQE 多查询扩展" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="10" y="378" width="220" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s3_a1" value="generate_queries(question)" style="html=1;endArrow=open;endFill=0;strokeColor=#6c8ebf;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="415" as="sourcePoint"/>
+            <mxPoint x="540" y="415" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s3_a2" value="multi_query_prompt | LLM —— 生成3个查询变体" style="html=1;endArrow=open;endFill=0;strokeColor=#d6b656;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="440" as="sourcePoint"/>
+            <mxPoint x="955" y="440" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s3_a3" value="queries[q0, q1, q2, q3]" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#9673a6;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="955" y="465" as="sourcePoint"/>
+            <mxPoint x="540" y="465" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <!-- Loop for each query -->
+        <mxCell id="loop_box" value="loop  [ for each query in queries ]" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;strokeColor=#d6b656;fillColor=#ffffc0;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="310" y="488" width="870" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="s3_a4" value="base_retriever.invoke(query_i)" style="html=1;endArrow=open;endFill=0;strokeColor=#6c8ebf;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="520" as="sourcePoint"/>
+            <mxPoint x="1155" y="520" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s3_a5" value="docs_i" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#314354;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1155" y="545" as="sourcePoint"/>
+            <mxPoint x="330" y="545" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== Step 4: Dedup + Rerank ===== -->
+        <mxCell id="sep4" value="④ 后处理：去重 + 重排序" style="text;html=1;strokeColor=none;fillColor=#f0a30a;fontColor=#ffffff;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="10" y="580" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s4_a1" value="_deduplicate_documents(all_docs)" style="html=1;endArrow=open;endFill=0;strokeColor=#6c8ebf;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="616" as="sourcePoint"/>
+            <mxPoint x="1355" y="616" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s4_a2" value="unique_docs" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#BD7000;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1355" y="641" as="sourcePoint"/>
+            <mxPoint x="330" y="641" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s4_a3" value="_rerank_documents(unique_docs, question)  [可选]" style="html=1;endArrow=open;endFill=0;strokeColor=#6c8ebf;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="665" as="sourcePoint"/>
+            <mxPoint x="1355" y="665" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s4_a4" value="ranked_docs（按关键词评分降序）" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#BD7000;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1355" y="690" as="sourcePoint"/>
+            <mxPoint x="330" y="690" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== Step 5: Return ===== -->
+        <mxCell id="sep5" value="⑤ 返回检索结果" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="10" y="712" width="160" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s5_a1" value="返回 List[Document]（最终去重/排序结果）" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#6c8ebf;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="746" as="sourcePoint"/>
+            <mxPoint x="115" y="746" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow note -->
+        <mxCell id="note1" value="HyDE文档 ∪ MQE文档 = all_docs" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#ffffc0;strokeColor=#d6b656;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="390" y="578" width="200" height="38" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Legend ===== -->
+        <mxCell id="legend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="30" y="800" width="600" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_title" value="图例" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="806" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" value="→ 调用   --→ 返回值   loop框 = 循环执行" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="828" width="340" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" value="HyDE策略：生成假设答案 → 向量检索 | MQE策略：生成多查询 → 逐一检索" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="846" width="540" height="10" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

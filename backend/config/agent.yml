@@ -36,6 +36,6 @@ memory:
 # 检索增强配置
 retrieval:
   use_multi_query: true  # 多查询扩展
-  use_hyde: true  # 假设文档嵌入
-  num_queries: 3  # MQE生成的查询数量
-  rerank_enabled: true  # 重排序
+  use_hyde: false        # 假设文档嵌入（关闭以降低延迟）
+  num_queries: 1         # MQE生成的查询数量（减少额外LLM调用）
+  rerank_enabled: false  # 重排序

@@ -1,0 +1,268 @@
+<mxfile host="Electron" modified="2024-01-01T00:00:00.000Z" agent="draw.io" version="21.0.0">
+  <diagram name="多智能体模块时序图" id="multi-agent-internal-seq">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===================== Title ===================== -->
+        <mxCell id="title" value="多智能体模块 — 按需调度时序图" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="200" y="14" width="1060" height="38" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Lifeline Headers ===================== -->
+
+        <mxCell id="h_sched" value="Scheduler&#xa;(调度器)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="72" width="120" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="h_intent" value="IntentAnalyzer&#xa;(意图分析)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f4e8;strokeColor=#5a9e5a;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="72" width="120" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="h_plan" value="📋 训练规划教练" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="430" y="72" width="130" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="h_tech" value="🎯 技术指导教练" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="630" y="72" width="130" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="h_rec" value="🏥 运动康复教练" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="830" y="72" width="130" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="h_llm" value="LLM&#xa;(通义千问)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="72" width="110" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="h_syn" value="🔗 综合输出器&#xa;Synthesizer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a30a;strokeColor=#BD7000;fontColor=#ffffff;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="72" width="130" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Lifelines ===================== -->
+        <mxCell id="ll_sched"  value="" style="endArrow=none;dashed=1;html=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" source="lls_s"  target="lls_t"  parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="lls_s"  style="point;" vertex="1" parent="1"><mxGeometry x="120"  y="124" as="geometry"/></mxCell>
+        <mxCell id="lls_t"  style="point;" vertex="1" parent="1"><mxGeometry x="120"  y="1070" as="geometry"/></mxCell>
+
+        <mxCell id="ll_intent" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#5a9e5a;strokeWidth=2;" edge="1" source="lli_s"  target="lli_t"  parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="lli_s"  style="point;" vertex="1" parent="1"><mxGeometry x="300"  y="124" as="geometry"/></mxCell>
+        <mxCell id="lli_t"  style="point;" vertex="1" parent="1"><mxGeometry x="300"  y="1070" as="geometry"/></mxCell>
+
+        <mxCell id="ll_plan"   value="" style="endArrow=none;dashed=1;html=1;strokeColor=#82b366;strokeWidth=2;" edge="1" source="llp_s"  target="llp_t"  parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="llp_s"  style="point;" vertex="1" parent="1"><mxGeometry x="495"  y="124" as="geometry"/></mxCell>
+        <mxCell id="llp_t"  style="point;" vertex="1" parent="1"><mxGeometry x="495"  y="1070" as="geometry"/></mxCell>
+
+        <mxCell id="ll_tech"   value="" style="endArrow=none;dashed=1;html=1;strokeColor=#d6b656;strokeWidth=2;" edge="1" source="llt_s"  target="llt_t"  parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="llt_s"  style="point;" vertex="1" parent="1"><mxGeometry x="695"  y="124" as="geometry"/></mxCell>
+        <mxCell id="llt_t"  style="point;" vertex="1" parent="1"><mxGeometry x="695"  y="1070" as="geometry"/></mxCell>
+
+        <mxCell id="ll_rec"    value="" style="endArrow=none;dashed=1;html=1;strokeColor=#b85450;strokeWidth=2;" edge="1" source="llr_s"  target="llr_t"  parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="llr_s"  style="point;" vertex="1" parent="1"><mxGeometry x="895"  y="124" as="geometry"/></mxCell>
+        <mxCell id="llr_t"  style="point;" vertex="1" parent="1"><mxGeometry x="895"  y="1070" as="geometry"/></mxCell>
+
+        <mxCell id="ll_llm"    value="" style="endArrow=none;dashed=1;html=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" source="lll_s"  target="lll_t"  parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="lll_s"  style="point;" vertex="1" parent="1"><mxGeometry x="1085" y="124" as="geometry"/></mxCell>
+        <mxCell id="lll_t"  style="point;" vertex="1" parent="1"><mxGeometry x="1085" y="1070" as="geometry"/></mxCell>
+
+        <mxCell id="ll_syn"    value="" style="endArrow=none;dashed=1;html=1;strokeColor=#BD7000;strokeWidth=2;" edge="1" source="llsy_s" target="llsy_t" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="llsy_s" style="point;" vertex="1" parent="1"><mxGeometry x="1275" y="124" as="geometry"/></mxCell>
+        <mxCell id="llsy_t" style="point;" vertex="1" parent="1"><mxGeometry x="1275" y="1070" as="geometry"/></mxCell>
+
+        <!-- ===================== PHASE 1: 意图识别 ===================== -->
+        <mxCell id="ph1_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#6c8ebf;opacity=30;" vertex="1" parent="1">
+          <mxGeometry x="10" y="144" width="1410" height="196" as="geometry" />
+        </mxCell>
+        <mxCell id="ph1_lbl" value="Phase 1 — 意图识别与路由" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="18" y="148" width="220" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Scheduler → IntentAnalyzer: _analyze_request -->
+        <mxCell id="p1_a1" value="_analyze_request(user_input, user_profile)" style="html=1;endArrow=open;endFill=0;strokeColor=#5a9e5a;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="178" as="sourcePoint"/>
+            <mxPoint x="300" y="178" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- note: keyword scan -->
+        <mxCell id="p1_note1" value="关键词扫描 user_input&#xa;检测 user_profile 中伤病字段&#xa;&#xa;planning  关键词：计划/规划/安排/目标&#xa;technique 关键词：动作/姿势/技术/要领&#xa;recovery  关键词：恢复/损伤/伤痛/风险&#xa;has_injury：膝/腰/肩/康复…" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=12;fillColor=#ffffc0;strokeColor=#5a9e5a;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="310" y="162" width="270" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- IntentAnalyzer returns routing -->
+        <mxCell id="p1_a2" value="routing = { signals:[...], has_injury:bool, is_plan_request:bool }" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#5a9e5a;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="278" as="sourcePoint"/>
+            <mxPoint x="120" y="278" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Scheduler: _select_agents → selected_agents -->
+        <mxCell id="p1_a3" value="_select_agents(routing)  →  selected_agents = [...]" style="html=1;endArrow=none;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="310" as="sourcePoint"/>
+            <mxPoint x="420" y="310" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p1_note2" value="planning 不在信号中也默认选中&#xa;recovery 在 has_injury=true 时强制选中" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=12;fillColor=#e8f4e8;strokeColor=#5a9e5a;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="430" y="297" width="270" height="34" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== PHASE 2: 按需调度（三个 opt 片段） ===================== -->
+        <mxCell id="ph2_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f9f9;strokeColor=#aaaaaa;opacity=30;" vertex="1" parent="1">
+          <mxGeometry x="10" y="354" width="1410" height="558" as="geometry" />
+        </mxCell>
+        <mxCell id="ph2_lbl" value="Phase 2 — 按需调度教练（各 opt 独立触发）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#444444;" vertex="1" parent="1">
+          <mxGeometry x="18" y="358" width="360" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- opt 1: planning -->
+        <mxCell id="opt1_box" value="opt  [  &quot;planning&quot; ∈ selected_agents  ]" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;fontStyle=3;strokeColor=#82b366;fillColor=#f0fff0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="380" width="1390" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="opt1_border" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#82b366;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="380" width="1390" height="148" as="geometry" />
+        </mxCell>
+
+        <mxCell id="o1_a1" value="process(state, context=&quot;&quot;)" style="html=1;endArrow=open;endFill=0;strokeColor=#82b366;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="420" as="sourcePoint"/>
+            <mxPoint x="495" y="420" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o1_a2" value="planning_prompt | LLM&#xa;(user_input, user_profile, retrieved_docs)" style="html=1;endArrow=open;endFill=0;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="495" y="454" as="sourcePoint"/>
+            <mxPoint x="1085" y="454" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o1_a3" value="训练规划建议（Markdown 草案）" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1085" y="478" as="sourcePoint"/>
+            <mxPoint x="495" y="478" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o1_a4" value="agent_results[&quot;planning&quot;] = result" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#82b366;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="495" y="506" as="sourcePoint"/>
+            <mxPoint x="120" y="506" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- opt 2: technique -->
+        <mxCell id="opt2_box" value="opt  [  &quot;technique&quot; ∈ selected_agents  ]" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;fontStyle=3;strokeColor=#d6b656;fillColor=#fffbee;" vertex="1" parent="1">
+          <mxGeometry x="20" y="540" width="1390" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="opt2_border" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#d6b656;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="540" width="1390" height="148" as="geometry" />
+        </mxCell>
+
+        <mxCell id="o2_a1" value="process(state, context=planning_result)" style="html=1;endArrow=open;endFill=0;strokeColor=#d6b656;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="580" as="sourcePoint"/>
+            <mxPoint x="695" y="580" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o2_note" value="context 注入 planning_result&#xa;（若已执行则传入，否则为空）" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=12;fillColor=#ffffc0;strokeColor=#d6b656;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="706" y="565" width="200" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="o2_a2" value="technique_prompt | LLM&#xa;(user_input, user_profile, retrieved_docs, context)" style="html=1;endArrow=open;endFill=0;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="695" y="614" as="sourcePoint"/>
+            <mxPoint x="1085" y="614" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o2_a3" value="技术指导建议（≤4 条动作要点）" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1085" y="638" as="sourcePoint"/>
+            <mxPoint x="695" y="638" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o2_a4" value="agent_results[&quot;technique&quot;] = result" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#d6b656;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="695" y="666" as="sourcePoint"/>
+            <mxPoint x="120" y="666" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- opt 3: recovery -->
+        <mxCell id="opt3_box" value="opt  [  &quot;recovery&quot; ∈ selected_agents  OR  has_injury = true  ]" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;fontStyle=3;strokeColor=#b85450;fillColor=#fff5f5;" vertex="1" parent="1">
+          <mxGeometry x="20" y="700" width="1390" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="opt3_border" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#b85450;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="700" width="1390" height="148" as="geometry" />
+        </mxCell>
+
+        <mxCell id="o3_a1" value="process(state, context=planning_result)" style="html=1;endArrow=open;endFill=0;strokeColor=#b85450;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="740" as="sourcePoint"/>
+            <mxPoint x="895" y="740" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o3_note" value="has_injury=true 时强制触发&#xa;无论 signals 是否含 recovery" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=12;fillColor=#ffe6cc;strokeColor=#b85450;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="906" y="726" width="195" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="o3_a2" value="recovery_prompt | LLM&#xa;(user_input, user_profile, retrieved_docs, context)" style="html=1;endArrow=open;endFill=0;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="895" y="774" as="sourcePoint"/>
+            <mxPoint x="1085" y="774" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o3_a3" value="康复建议（≤4 条风险规避）" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1085" y="798" as="sourcePoint"/>
+            <mxPoint x="895" y="798" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o3_a4" value="agent_results[&quot;recovery&quot;] = result" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="895" y="826" as="sourcePoint"/>
+            <mxPoint x="120" y="826" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===================== PHASE 3: 综合输出 ===================== -->
+        <mxCell id="ph3_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8ee;strokeColor=#BD7000;opacity=30;" vertex="1" parent="1">
+          <mxGeometry x="10" y="926" width="1410" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ph3_lbl" value="Phase 3 — 综合输出（仅汇总已执行的教练结果）" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#BD7000;" vertex="1" parent="1">
+          <mxGeometry x="18" y="930" width="380" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p3_a1" value="synthesis_chain.invoke({ user_input, agent_outputs=已执行结果拼接 })" style="html=1;endArrow=open;endFill=0;strokeColor=#BD7000;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="964" as="sourcePoint"/>
+            <mxPoint x="1275" y="964" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3_a2" value="synthesis_prompt | LLM" style="html=1;endArrow=open;endFill=0;strokeColor=#9673a6;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1275" y="990" as="sourcePoint"/>
+            <mxPoint x="1085" y="990" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p3_a3" value="structured_response = { summary, coaches:[ 已参与教练 ], scheduler:{ signals, selected_agents } }" style="html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#BD7000;strokeWidth=2;fontSize=11;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1085" y="1022" as="sourcePoint"/>
+            <mxPoint x="120" y="1022" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===================== 路由规则侧注 ===================== -->
+        <mxCell id="routing_note" value="按需调度规则&#xa;────────────────&#xa;signals 来源：&#xa;  · user_input 关键词匹配&#xa;  · user_profile 伤病检测&#xa;  · is_plan_request 标志&#xa;&#xa;选教练逻辑：&#xa;  ∅ signals → 默认选 planning&#xa;  has_injury  → 强制加 recovery&#xa;  is_plan_request → 加 planning+technique&#xa;────────────────&#xa;三位教练均按自身条件独立触发&#xa;互不依赖，均可单独执行" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="354" width="210" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== Legend ===================== -->
+        <mxCell id="legend_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="10" y="1058" width="900" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" value="→ 调用    --→ 返回值    opt[ 条件 ] = 仅当条件成立时执行该教练    三个 opt 相互独立，由路由结果各自决定是否触发" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="18" y="1068" width="870" height="22" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -209,48 +209,35 @@ class MemoryManager:
     
     def __init__(self):
         config = agent_conf.get("memory", {})
-        
+
         # 初始化各层记忆
         working_memory_size = config.get("working_memory_size", 5)
         self.working_memory = WorkingMemory(max_size=working_memory_size)
-        
-        if config.get("episodic_memory_enabled", True):
-            self.episodic_memory = EpisodicMemory()
-        else:
-            self.episodic_memory = None
-        
+
+        # 情景记忆由数据库持久化（memory_episodic_events 表），此处不再维护内存副本
+
         if config.get("semantic_memory_enabled", True):
             self.semantic_memory = SemanticMemory()
         else:
             self.semantic_memory = None
-        
+
         if config.get("perceptual_memory_enabled", True):
             self.perceptual_memory = PerceptualMemory()
         else:
             self.perceptual_memory = None
-        
+
         logger.info("记忆管理器初始化完成")
     
-    def record_interaction(self, question: str, answer: str, 
+    def record_interaction(self, question: str, answer: str,
                           retrieved_docs: Optional[List[str]] = None,
                           metadata: Optional[Dict] = None):
-        """记录一次完整的交互"""
+        """记录一次完整的交互（仅更新工作记忆和感知记忆；情景记忆由 API 层写入数据库持久化）"""
         # 工作记忆
         self.working_memory.add_message("human", question)
         self.working_memory.add_message("ai", answer)
-        
-        # 情景记忆
-        if self.episodic_memory:
-            self.episodic_memory.add_episode(
-                question=question,
-                answer=answer,
-                retrieved_docs=retrieved_docs or [],
-                metadata=metadata
-            )
-        
+
         # 感知记忆 - 记录文档特征
         if self.perceptual_memory and metadata:
-            # 提取图像相关信息
             if "image_descriptions" in metadata:
                 for img_info in metadata["image_descriptions"]:
                     self.perceptual_memory.add_image_description(
@@ -258,18 +245,17 @@ class MemoryManager:
                         description=img_info.get("description"),
                         metadata=img_info.get("metadata")
                     )
-        
-        logger.info("交互记录完成")
+
+        logger.info("交互记录完成（工作记忆已更新，情景记忆由 API 层持久化）")
     
     def get_context_for_query(self) -> str:
         """获取用于查询的上下文"""
         return self.working_memory.get_context_string()
     
     def summarize_memory(self) -> Dict[str, Any]:
-        """总结记忆状态"""
+        """总结记忆状态（情景记忆持久化在数据库，此处不统计）"""
         summary = {
             "working_memory_size": len(self.working_memory.messages),
-            "episodic_memory_size": len(self.episodic_memory.episodes) if self.episodic_memory else 0,
             "semantic_concepts": len(self.semantic_memory.concepts) if self.semantic_memory else 0,
             "perceptual_documents": len(self.perceptual_memory.document_features) if self.perceptual_memory else 0,
             "perceptual_images": len(self.perceptual_memory.image_descriptions) if self.perceptual_memory else 0

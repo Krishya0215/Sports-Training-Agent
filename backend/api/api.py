@@ -28,6 +28,7 @@ from backend.api.auth import AuthService
 from backend.api.database import db
 from backend.memory.memory_service import memory_service
 from backend.memory.memory_consolidation import consolidation_service
+from backend.model.multimodal_model import multimodal_llm
 
 app = FastAPI(
     title="运动训练知识问答API",
@@ -85,6 +86,7 @@ class TrainingPlan(BaseModel):
     selected_weekdays: Optional[List[str]] = None
     source_prompt: Optional[str] = None
     ai_response: Optional[str] = None
+    conversation_id: Optional[str] = None  # 关联的对话ID
 
 
 class TrainingPlanUpdate(BaseModel):
@@ -536,15 +538,20 @@ def _build_memory_dashboard(user_id: int, is_admin: bool = False) -> Dict[str, A
 
 @app.on_event("startup")
 async def startup_event():
-    """应用启动时初始化Agent"""
+    """应用启动时初始化Agent（在线程池中执行，避免阻塞事件循环）"""
     global agent, multi_agent_system
-    logger.info("正在初始化Agent...")
-    agent = SportsTrainingAgent()
-    logger.info("Agent初始化完成")
-    
-    logger.info("正在初始化多智能体系统...")
-    multi_agent_system = MultiAgentTrainingSystem()
-    logger.info("多智能体系统初始化完成")
+
+    def _init_agents():
+        global agent, multi_agent_system
+        logger.info("正在初始化Agent...")
+        agent = SportsTrainingAgent()
+        logger.info("Agent初始化完成")
+        logger.info("正在初始化多智能体系统...")
+        multi_agent_system = MultiAgentTrainingSystem()
+        logger.info("多智能体系统初始化完成")
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _init_agents)
 
 
 
@@ -612,9 +619,10 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
 
             # 根据请求选择使用单智能体或多智能体系统
             # 将感知记忆信息注入到记忆上下文
+            # 图像分析：对图片附件调用多模态模型生成描述，注入问题上下文
+            image_analysis_parts = []
             if perceptual_assets:
                 memory_context["_perceptual_assets"] = perceptual_assets
-                # 在记忆提示词中添加感知记忆信息
                 perceptual_info = "\n【用户上传的资料】\n"
                 for asset in perceptual_assets:
                     asset_type = "图片" if asset["asset_type"] == "image" else "文档"
@@ -622,6 +630,27 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                     if asset.get("description"):
                         perceptual_info += f" (备注: {asset['description']})"
                     perceptual_info += "\n"
+
+                    # 对图片附件调用多模态模型生成描述
+                    if asset["asset_type"] == "image" and asset.get("source_path"):
+                        try:
+                            user_prompt = f"用户问题：{request.question}\n\n请结合用户问题，分析并描述这张图片中与运动训练相关的内容。"
+                            vl_result = multimodal_llm.generate_image_description(
+                                asset["source_path"],
+                                prompt=user_prompt,
+                                detail_level="detailed"
+                            )
+                            if vl_result.get("success") and vl_result.get("description"):
+                                desc = vl_result["description"]
+                                image_analysis_parts.append(
+                                    f"[图片 {asset['source_name']} 的分析]\n{desc}"
+                                )
+                                logger.info(f"图片分析完成: {asset['source_name']}, 描述长度={len(desc)}")
+                            else:
+                                logger.warning(f"图片分析失败: {asset['source_name']}, error={vl_result.get('error')}")
+                        except Exception as e:
+                            logger.error(f"调用多模态模型失败: {e}")
+
                 memory_prompt += "\n" + perceptual_info
                 logger.info(f"已添加 {len(perceptual_assets)} 个感知记忆资产到上下文")
 
@@ -650,8 +679,13 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                                 "_memory_context": memory_context,
                                 "_memory_prompt": memory_prompt
                             }
+                        # 如果有图片分析结果，将其追加到问题中
+                        question_to_send = request.question
+                        if image_analysis_parts:
+                            analysis_text = "\n\n".join(image_analysis_parts)
+                            question_to_send = f"{request.question}\n\n{analysis_text}"
                         result_holder["result"] = multi_agent_system.process_request(
-                            request.question,
+                            question_to_send,
                             enhanced_profile,
                             stream_callback=stream_callback
                         )
@@ -699,47 +733,24 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
 
                 logger.info(f"收到单智能体查询: {request.question}")
 
+                # 如果有图片分析结果，将其追加到问题中
+                augmented_question = request.question
+                if image_analysis_parts:
+                    analysis_text = "\n\n".join(image_analysis_parts)
+                    augmented_question = f"{request.question}\n\n{analysis_text}"
+                    logger.info(f"已将 {len(image_analysis_parts)} 张图片分析结果注入问题")
+
                 # 使用单智能体处理，注入记忆上下文
-                result = agent.query(request.question, memory_context=memory_context)
+                result = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: agent.query(augmented_question, memory_context=memory_context)
+                )
                 thinking = result.get("thinking", "")
                 answer = result.get("answer", "")
                 structured_response = {}
                 scheduler = {}
                 coach_catalog = []
 
-            # 单智能体仍保留原有思考过程流式输出
-            if thinking and not request.use_multi_agent:
-                yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': False}, ensure_ascii=False)}\n\n"
-                await asyncio.sleep(0.1)
-                
-                thinking_lines = thinking.split('\n')
-                for line in thinking_lines:
-                    if line.strip():
-                        # 每行思考过程逐字输出
-                        chunk_size = 2
-                        for i in range(0, len(line), chunk_size):
-                            chunk = line[i:i + chunk_size]
-                            data = {
-                                "type": "thinking",
-                                "content": chunk,
-                                "done": False
-                            }
-                            yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                            await asyncio.sleep(0.02)
-                        
-                        # 每行末尾加换行
-                        data = {
-                            "type": "thinking",
-                            "content": "\n",
-                            "done": False
-                        }
-                        yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-                        await asyncio.sleep(0.05)
-                
-                # 思考过程完成
-                yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
-                await asyncio.sleep(0.3)  # 思考和答案之间的延迟
-
+            # 单智能体不推送 thinking，避免对聊天类问题也显示"生成过程"
             if request.use_multi_agent:
                 yield f"data: {json.dumps({'type': 'thinking', 'content': '', 'done': True}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.1)
@@ -1117,7 +1128,7 @@ async def upload_knowledge_document(
         from backend.utils.config_handler import chroma_conf
         from backend.utils.path_tool import get_abs_path
 
-        data_path = get_abs_path(chroma_conf["data_path"])
+        data_path = Path(get_abs_path(chroma_conf["data_path"]))
         data_path.mkdir(parents=True, exist_ok=True)
 
         # 检查文件类型
@@ -1404,6 +1415,7 @@ async def upload_chat_attachment(
 
         # 保存到感知记忆
         asset = db.create_perceptual_asset({
+            "user_id": user["id"],
             "asset_type": asset_type,
             "source_path": str(file_path),
             "source_name": file.filename,
@@ -1646,18 +1658,58 @@ async def get_chat_history(authorization: Optional[str] = Header(None)):
         current_user = _require_current_user(authorization)
         conversations = db.get_chat_conversations(current_user["id"], limit=50)
 
+        # 查询该用户所有按 conversation_id 关联的训练计划
+        conn = db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM training_plans WHERE user_id = ? AND conversation_id IS NOT NULL ORDER BY created_at DESC",
+            (current_user["id"],)
+        )
+        plan_rows = cursor.fetchall()
+        conn.close()
+        # 构建 conversation_id -> plan 的映射（取最新一条）
+        plan_by_conv: Dict[str, Any] = {}
+        for row in plan_rows:
+            plan = db._row_to_training_plan(row)
+            conv_id = plan.get("conversation_id")
+            if conv_id and conv_id not in plan_by_conv:
+                plan_by_conv[conv_id] = plan
+
         history = []
         for conv in conversations:
-            msgs = db.get_conversation_messages(current_user["id"], conv["conversation_id"])
+            conv_id = conv["conversation_id"]
+            msgs = db.get_conversation_messages(current_user["id"], conv_id)
             conversation_list = []
+
+            # 找到该对话关联的训练计划（如有）
+            linked_plan = plan_by_conv.get(conv_id)
+
             for m in msgs:
                 conversation_list.append({"role": "user", "content": m["question"], "timestamp": m["created_at"]})
                 conversation_list.append({"role": "assistant", "content": m["answer"], "timestamp": m["created_at"]})
+
+            # 把 planCard 附加到最后一条 assistant 消息
+            if linked_plan:
+                for i in range(len(conversation_list) - 1, -1, -1):
+                    if conversation_list[i]["role"] == "assistant":
+                        plan_meta = linked_plan.get("metadata") or {}
+                        conversation_list[i]["planCard"] = {
+                            "planId": linked_plan["id"],
+                            "title": linked_plan.get("title", ""),
+                            "subtitle": plan_meta.get("goal", linked_plan.get("goal", "")),
+                            "weeklyDays": plan_meta.get("weekly_days", ""),
+                            "duration": plan_meta.get("daily_duration", ""),
+                            "intensity": plan_meta.get("intensity", ""),
+                            "summary": ""
+                        }
+                        conversation_list[i]["content"] = ""  # 有卡片时隐藏原始文本
+                        break
+
             history.append({
                 "question": conv["question"],
                 "answer": conv["answer"],
                 "timestamp": conv["last_time"],
-                "conversationId": conv["conversation_id"],
+                "conversationId": conv_id,
                 "conversation": conversation_list
             })
 
@@ -2479,11 +2531,12 @@ async def create_daily_record(record: DailyRecord, authorization: Optional[str] 
         record_dict = record.dict()
         saved_record = db.create_daily_record(user["id"], record_dict)
 
-        # 记录到情景记忆
+        # 记录到情景记忆（event_summary 包含食物内容，便于 AI 直接读取）
+        food_content = saved_record.get("food_content", "")
         episode = _record_episode(user["id"], {
             "event_type": "diet_recorded",
             "record_id": saved_record["id"],
-            "event_summary": f"{saved_record['date']} {saved_record['meal_type']} 饮食记录已保存",
+            "event_summary": f"{saved_record['date']} {saved_record['meal_type']}：{food_content}",
             "trigger_source": "daily_record_create",
             "payload": saved_record,
             "importance_score": 0.6,

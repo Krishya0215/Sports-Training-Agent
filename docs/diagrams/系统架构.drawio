@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- User Layer -->
+        <mxCell id="user" value="用户层" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Frontend -->
+        <mxCell id="frontend" value="前端展示层 (Vue.js + Element Plus)\n- 登录注册\n- AI教练对话\n- 训练计划\n- 个人中心\n- 知识库管理\n- 记忆管理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="200" y="120" width="300" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend -->
+        <mxCell id="backend" value="后端服务层 (FastAPI)\n- 认证服务\n- API网关\n- 聊天服务\n- 知识库服务\n- 记忆服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="200" y="300" width="300" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Agent Layer -->
+        <mxCell id="agent" value="多智能体层 (LangGraph)\n- 请求路由器\n- 工作流引擎\n- 执行计划调度器\n- 教练智能体池" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;" vertex="1" parent="1">
+          <mxGeometry x="200" y="460" width="300" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- RAG -->
+        <mxCell id="rag" value="RAG检索系统\n- 高级检索器\n- 文档处理器\n- 向量存储服务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" vertex="1" parent="1">
+          <mxGeometry x="550" y="500" width="260" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Memory -->
+        <mxCell id="memory" value="记忆管理模块\n- 工作记忆\n- 情景记忆\n- 语义记忆\n- 感知记忆" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="550" y="380" width="260" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Storage -->
+        <mxCell id="storage" value="数据存储层\n- 向量数据库 (Chroma)\n- 关系数据库 (SQLite)\n- 知识库文件" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="550" y="240" width="260" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Model -->
+        <mxCell id="model" value="模型服务层\n- 大语言模型\n- 嵌入模型" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="550" y="120" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" edge="1" parent="1" source="user" target="frontend" style="endArrow=block;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e2" edge="1" parent="1" source="frontend" target="backend" style="endArrow=block;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e3" edge="1" parent="1" source="backend" target="agent" style="endArrow=block;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e4" edge="1" parent="1" source="agent" target="rag" style="endArrow=block;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e5" edge="1" parent="1" source="rag" target="memory" style="endArrow=block;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e6" edge="1" parent="1" source="memory" target="storage" style="endArrow=block;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e7" edge="1" parent="1" source="storage" target="model" style="endArrow=block;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

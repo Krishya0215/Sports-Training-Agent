@@ -1,0 +1,86 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="system-architecture" name="系统总体架构图">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="550" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- 标题 -->
+        <mxCell id="title" value="运动训练多智能体协同支持系统总体架构" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="10" width="450" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- 用户 -->
+        <mxCell id="user" value="用户" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0" vertex="1" parent="1">
+          <mxGeometry x="410" y="60" width="30" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- 前端层 -->
+        <mxCell id="frontend" value="前端展示层" style="rounded=1;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="120" y="150" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- 后端层 -->
+        <mxCell id="backend" value="后端服务层" style="rounded=1;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="120" y="250" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- 多智能体层 -->
+        <mxCell id="agent" value="多智能体协同层" style="rounded=1;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="120" y="350" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- RAG -->
+        <mxCell id="rag" value="RAG检索系统" style="rounded=1;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="360" y="350" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- 记忆模块 -->
+        <mxCell id="memory" value="记忆管理模块" style="rounded=1;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="350" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- 数据存储层 -->
+        <mxCell id="data" value="数据存储层" style="rounded=1;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="360" y="450" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- 模型服务层 -->
+        <mxCell id="model" value="模型服务层" style="rounded=1;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="450" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- 连接线 -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1" edge="1" parent="1" source="user" target="frontend">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1" edge="1" parent="1" source="frontend" target="backend">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1" edge="1" parent="1" source="backend" target="agent">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="agent" target="rag">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="agent" target="memory">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="rag" target="data">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="agent" target="model">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1" edge="1" parent="1" source="data" target="model">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- 横向连接 -->
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;edgeStyle=none" edge="1" parent="1" source="rag" target="memory">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

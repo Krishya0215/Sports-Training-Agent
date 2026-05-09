@@ -53,6 +53,12 @@ class UserDatabase:
         except Exception:
             pass  # 列已存在则忽略
 
+        # 迁移：为 training_plans 补充 conversation_id 列
+        try:
+            cursor.execute("ALTER TABLE training_plans ADD COLUMN conversation_id TEXT DEFAULT NULL")
+        except Exception:
+            pass  # 列已存在则忽略
+
         # 创建token表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tokens (
@@ -116,6 +122,7 @@ class UserDatabase:
                 status TEXT DEFAULT 'active',
                 version INTEGER DEFAULT 1,
                 based_on_memory INTEGER DEFAULT 0,
+                conversation_id TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users(id)
@@ -218,6 +225,7 @@ class UserDatabase:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS memory_perceptual_assets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
                 asset_type TEXT NOT NULL,
                 source_path TEXT NOT NULL,
                 source_name TEXT,
@@ -577,15 +585,15 @@ class UserDatabase:
             return False
 
     def update_profile_status(self, email: str, completed: bool = True) -> bool:
-        """更新用户资料完成状态"""
+        """更新用户资料完成状态，同时清除首次登录标记"""
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
-            
+
             now = datetime.now().isoformat()
             cursor.execute("""
-                UPDATE users 
-                SET profile_completed = ?, updated_at = ?
+                UPDATE users
+                SET profile_completed = ?, is_first_login = 0, updated_at = ?
                 WHERE email = ?
             """, (1 if completed else 0, now, email))
             
@@ -737,8 +745,8 @@ class UserDatabase:
             INSERT INTO training_plans (
                 user_id, title, content, goal, start_date, end_date, created_from_ai,
                 metadata_json, selected_weekdays_json, source_prompt, ai_response,
-                status, version, based_on_memory, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                status, version, based_on_memory, conversation_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_id,
             plan.get("title"),
@@ -754,6 +762,7 @@ class UserDatabase:
             plan.get("status", "active"),
             plan.get("version", 1),
             1 if plan.get("based_on_memory") else 0,
+            plan.get("conversation_id"),
             now,
             now
         ))
@@ -1257,11 +1266,12 @@ class UserDatabase:
         now = datetime.now().isoformat()
         cursor.execute("""
             INSERT INTO memory_perceptual_assets (
-                asset_type, source_path, source_name, chunk_id, page_no, title, description,
+                user_id, asset_type, source_path, source_name, chunk_id, page_no, title, description,
                 feature_tags_json, body_part, movement_type, risk_level,
                 contraindications_json, embedding_ref, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
+            asset.get("user_id"),
             asset.get("asset_type"),
             asset.get("source_path"),
             asset.get("source_name"),

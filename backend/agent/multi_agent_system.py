@@ -114,24 +114,24 @@ class MultiAgentTrainingSystem:
             temperature=0.35,
             request_timeout=40,
             max_retries=1,
-            prompt_template="""你是一位专业的训练规划教练。根据用户的目标、能力和历史数据，制定科学的训练计划。
+            prompt_template="""你是一位专业的训练规划教练。
+
+【铁律】只有当用户明确说出"帮我制定计划/给我一份方案/生成计划/安排课表"等包含明确动作指令+计划词的请求时，才输出训练计划。其他情况禁止生成计划。
 
 用户输入: {user_input}
 用户档案: {user_profile}
 参考知识: {retrieved_docs}
 
-如果用户是在生成完整训练计划：
-1. 请直接输出一份结构完整的 Markdown 训练计划草案。
-2. 草案要包含标题、计划概述、按周安排、按训练日安排。
-3. 每个训练日至少包含训练主题、建议时长、训练重点、恢复建议。
-4. 在用户还没有明确选定每周具体训练日之前，不要擅自写“周一训练日”“周四训练日”等具体周几，只使用“训练日1”“训练日2”这类编号。
-5. 训练日标题里也不要附带括号或连字符形式的星期信息，例如禁止输出“训练日1（周一）”“训练日2(周四)”或“训练日1-周一”。
-6. 先保证结构完整和可执行，不必写额外解释。
+如果用户明确要求生成完整训练计划：
+1. 输出结构完整的 Markdown 训练计划草案（标题、计划概述、按周安排、按训练日安排）。
+2. 每个训练日包含训练主题、建议时长、训练重点、恢复建议。
+3. 训练日只用"训练日1""训练日2"编号，不写具体星期几。
+4. 训练日标题禁止出现括号或连字符补充的星期信息。
 
-如果不是生成完整训练计划：
-请给出简洁清晰的训练规划建议。
+如果用户不是明确要求生成计划（含陈述、提问、咨询等）：
+给出简洁清晰的建议要点（3-5条），禁止输出任何训练计划或周计划表格。
 
-训练计划:"""
+回答:"""
         )
 
         technique_coach = CoachAgent(
@@ -217,6 +217,8 @@ class MultiAgentTrainingSystem:
         self.synthesis_prompt = PromptTemplate.from_template(
             """你是一位资深 AI 运动教练负责人，需要把多个专项教练的建议整合成一份最终答复。
 
+【铁律】只有用户明确说"帮我制定计划/给我一份方案/生成计划/安排课表"等包含明确动作指令+计划词时，才输出训练计划。其他情况（含陈述状态、一般提问、模糊表达、伤病咨询）禁止生成训练计划，只给建议要点。
+
 用户原始问题:
 {user_input}
 
@@ -227,8 +229,8 @@ class MultiAgentTrainingSystem:
 {agent_outputs}
 
 请严格遵循以下要求：
-1. 最终只输出一份综合后的答案，不要分成“训练规划教练/技术指导教练/运动康复教练”多个小节。
-2. 如果用户是在生成训练计划，必须输出为清晰、标准的 Markdown，并尽量遵循下面结构：
+1. 最终只输出一份综合后的答案，不要分成多个教练小节。
+2. 如果用户明确要求生成训练计划，输出清晰标准的 Markdown，结构为：
    # 计划标题
    ## 计划概述
    ## 第1周
@@ -237,17 +239,16 @@ class MultiAgentTrainingSystem:
    - 建议时长：
    - 训练重点：
    - 恢复建议：
-   - 替代方案：如无伤病风险可不写
-3. 训练计划应尽量细化到 4 周，并按周、按训练日安排内容。
-4. 如用户有伤病或风险提示，必须把技术指导与康复建议融合进对应训练日，不要单独再列一个“Agent建议”区域。
-5. 不要输出“以下是综合建议”“以下分别来自不同Agent”之类的说明。
-6. 不要输出“计划标题：”这几个字，只保留真正的标题文本。
+3. 训练计划应细化到 4 周，按周、按训练日安排内容。
+4. 如用户有伤病提示，把康复建议融合进对应训练日，不单独列"Agent建议"区域。
+5. 不要输出"以下是综合建议""以下分别来自不同Agent"之类说明。
+6. 不要输出"计划标题："几个字，只保留真正的标题文本。
 7. 不要使用 ---、*** 等分隔线，使用 Markdown 标题层级和自然分段。
-8. 如果用户不是要生成完整训练计划，就输出一份整合后的简洁专业回答，同样不要按 Agent 分节。
-9. 在用户尚未手动选择每周训练日之前，不要写具体星期几，只能写“训练日1 / 训练日2”这类编号。
-10. 训练日标题禁止出现括号或连字符补充的星期信息，例如“训练日1（周一）”“训练日1-周一”都不允许。
+8. 如果用户不是要生成完整训练计划，输出整合后的简洁专业建议（3-5条要点），结尾可询问是否需要制定计划。
+   **禁止在建议中使用 `## 第X周`、`### 训练日X` 等计划专属格式**，这些格式只能在明确要求生成计划时使用。
+9. 训练日只用"训练日1/训练日2"编号，禁止出现括号或连字符补充的星期信息。
 
-        最终答案："""
+最终答案："""
         )
         synthesis_model = build_chat_model(
             temperature=0.3,
@@ -304,19 +305,17 @@ class MultiAgentTrainingSystem:
         return state
 
     def _build_execution_plan_node(self, state: TrainingState) -> TrainingState:
-        """根据输入、画像和检索结果动态构建执行计划"""
+        """根据意图识别结果按需调度教练"""
         routing = self._analyze_request(state)
         selected_agents = self._select_agents(routing)
-        execution_plan = self._build_execution_batches(selected_agents)
 
         state["routing"] = routing
         state["selected_agents"] = selected_agents
-        state["execution_plan"] = execution_plan
+        state["execution_plan"] = [selected_agents]  # 保留字段兼容性，统一单批次
         state["agent_results"] = {}
         state["workflow_history"] = state.get("workflow_history", []) + [
             f"调度信号: {', '.join(routing.get('signals', [])) or '常规问答'}",
             f"已选择教练: {', '.join(selected_agents)}",
-            f"执行批次: {' -> '.join(['+'.join(batch) for batch in execution_plan])}"
         ]
 
         logger.info(f"调度完成: {selected_agents}")
@@ -333,14 +332,18 @@ class MultiAgentTrainingSystem:
         signals = set()
         injury_text = json.dumps(profile, ensure_ascii=False)
         has_injury = any(keyword in injury_text for keyword in ["伤", "痛", "膝", "腰", "肩", "腕", "康复"])
-        is_plan_request = any(keyword in user_input for keyword in [
-            "训练计划", "1 个月训练计划", "计划概述", "训练日", "每周训练天数", "第1周", "第2周"
-        ])
+        # 必须包含明确的"生成/制定/给/安排/写"+ "计划/方案/课表"组合才算计划请求
+        plan_action_words = ["生成", "制定", "帮我做", "给我", "安排", "写一个", "出一个", "做一个", "来一个"]
+        plan_target_words = ["训练计划", "健身计划", "训练方案", "健身方案", "训练课表", "健身课表"]
+        is_plan_request = (
+            any(a in user_input for a in plan_action_words) and
+            any(t in user_input for t in plan_target_words)
+        )
 
         keyword_map = {
-            "planning": ["计划", "规划", "安排", "周期", "目标", "课表"],
-            "technique": ["动作", "姿势", "技术", "要领", "标准", "纠正"],
-            "recovery": ["恢复", "康复", "损伤", "伤痛", "拉伤", "酸痛", "不适", "风险", "危险", "注意", "防护", "禁忌"]
+            "technique": ["动作", "姿势", "技术", "要领", "标准", "纠正", "动作规范"],
+            "recovery": ["恢复", "康复", "损伤", "伤痛", "拉伤", "酸痛", "不适", "风险", "危险", "注意", "防护", "禁忌",
+                         "受伤", "疼痛", "疼", "痛", "膝盖", "腰", "肩", "手腕", "脚踝", "肘部"]
         }
 
         for signal, keywords in keyword_map.items():
@@ -355,7 +358,7 @@ class MultiAgentTrainingSystem:
             signals.add("recovery")
 
         if not signals:
-            signals.add("planning")
+            signals.add("general")
 
         return {
             "signals": sorted(signals),
@@ -367,94 +370,67 @@ class MultiAgentTrainingSystem:
     def _select_agents(self, routing: Dict[str, Any]) -> List[str]:
         """根据调度信号选择参与教练"""
         signals = set(routing.get("signals", []))
+        is_plan_request = routing.get("is_plan_request", False)
         selected = []
 
-        if "planning" in signals:
+        # 只有明确的计划请求才调度 planning 教练
+        if is_plan_request and "planning" in signals:
             selected.append("planning")
 
         for agent_id in ["technique", "recovery"]:
             if agent_id in signals:
                 selected.append(agent_id)
 
-        if routing.get("has_injury"):
-            for agent_id in ["recovery"]:
-                if agent_id not in selected:
-                    selected.append(agent_id)
+        if routing.get("has_injury") and "recovery" not in selected:
+            selected.append("recovery")
 
+        # 无论如何至少保留一个教练；非计划请求优先用 planning 教练做问答（其 prompt 有禁止生成计划的铁律）
         if not selected:
             selected = ["planning"]
 
         return selected
 
-    def _build_execution_batches(self, selected_agents: List[str]) -> List[List[str]]:
-        """构建按需执行批次"""
-        if not selected_agents:
-            return [["planning"]]
-
-        batches: List[List[str]] = []
-        remaining = list(selected_agents)
-
-        if "planning" in remaining:
-            batches.append(["planning"])
-            remaining.remove("planning")
-
-        if remaining:
-            batches.append(remaining)
-
-        return batches
-
     def _execute_agents_node(self, state: TrainingState) -> TrainingState:
-        """执行调度后的教练批次"""
-        agent_results = state.get("agent_results", {}) or {}
+        """按需并行执行所有被选中的教练，各自由意图识别结果独立触发"""
+        selected_agents = state.get("selected_agents", [])
+        agent_results: Dict[str, str] = {}
 
-        for batch_index, batch in enumerate(state.get("execution_plan", []), start=1):
-            state["workflow_history"] = state.get("workflow_history", []) + [
-                f"开始执行批次 {batch_index}: {', '.join(batch)}"
-            ]
-            self._emit_progress(
-                state,
-                f"正在进行第 {batch_index} 轮分析：{self._format_batch_names(batch)}"
-            )
+        state["workflow_history"] = state.get("workflow_history", []) + [
+            f"开始执行: {', '.join(selected_agents)}"
+        ]
+        for agent_id in selected_agents:
+            self._emit_progress(state, f"{self.coach_catalog[agent_id]['name']}正在整理建议")
 
-            can_run_parallel = batch_index > 1 and len(batch) > 1
-
-            if can_run_parallel:
-                for agent_id in batch:
-                    self._emit_progress(state, f"{self.coach_catalog[agent_id]['name']}正在整理建议")
-
-                with ThreadPoolExecutor(max_workers=len(batch)) as executor:
-                    future_map = {
-                        executor.submit(
-                            self.coaches[agent_id].process,
-                            state,
-                            self._build_agent_context(agent_id, agent_results)
-                        ): agent_id
-                        for agent_id in batch
-                    }
-
-                    for future in as_completed(future_map):
-                        agent_id = future_map[future]
-                        result = future.result()
-                        self._store_agent_result(state, agent_results, agent_id, result)
-            else:
-                for agent_id in batch:
-                    coach = self.coaches[agent_id]
-                    self._emit_progress(state, f"{self.coach_catalog[agent_id]['name']}正在整理建议")
-                    context = self._build_agent_context(agent_id, agent_results)
-                    result = coach.process(state, context)
+        if len(selected_agents) == 1:
+            agent_id = selected_agents[0]
+            context = self._build_agent_context(agent_id, agent_results)
+            result = self.coaches[agent_id].process(state, context)
+            self._store_agent_result(state, agent_results, agent_id, result)
+        else:
+            with ThreadPoolExecutor(max_workers=len(selected_agents)) as executor:
+                future_map = {
+                    executor.submit(
+                        self.coaches[agent_id].process,
+                        state,
+                        self._build_agent_context(agent_id, agent_results)
+                    ): agent_id
+                    for agent_id in selected_agents
+                }
+                for future in as_completed(future_map):
+                    agent_id = future_map[future]
+                    result = future.result()
                     self._store_agent_result(state, agent_results, agent_id, result)
 
         state["agent_results"] = agent_results
         return state
 
     def _build_agent_context(self, agent_id: str, agent_results: Dict[str, str]) -> str:
-        """构造 agent 上下文"""
+        """构造 agent 上下文：technique / recovery 可选注入 planning 结果"""
         if agent_id == "planning":
             return ""
-        if agent_id == "technique":
-            return f"训练规划结果:\n{agent_results.get('planning', '')}"
-        if agent_id == "recovery":
-            return f"训练规划结果:\n{agent_results.get('planning', '')}"
+        planning_result = agent_results.get("planning", "")
+        if planning_result:
+            return f"训练规划结果:\n{planning_result}"
         return ""
 
     def _synthesize_node(self, state: TrainingState) -> TrainingState:
@@ -583,12 +559,6 @@ class MultiAgentTrainingSystem:
         user_input = state.get("user_input", "")
         return any(keyword in user_input for keyword in ["生成一个 1 个月训练计划", "生成训练计划"])
 
-    def _format_batch_names(self, batch: List[str]) -> str:
-        return "、".join(
-            self.coach_catalog.get(agent_id, {}).get("name", agent_id)
-            for agent_id in batch
-        )
-    
     def process_request(self, user_input: str, user_profile: dict = None, stream_callback=None) -> dict:
         """
         处理用户请求

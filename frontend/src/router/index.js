@@ -29,9 +29,7 @@ const routes = [
   },
   {
     path: '/profile-setup',
-    name: 'ProfileSetup',
-    component: () => import('../views/ProfileSetup.vue'),
-    meta: { requiresAuth: true, requiresProfileSetup: true }
+    redirect: '/chat'
   },
   {
     path: '/chat',
@@ -101,7 +99,6 @@ router.beforeEach(async (to, from, next) => {
   await authStore.verifyToken()
 
   const isAuthenticated = authStore.isAuthenticated
-  const isFirstLogin = authStore.isFirstLogin && !authStore.profileCompleted
   const isAdmin = authStore.user?.role === 'admin'
 
   // 检查是否需要认证
@@ -112,24 +109,7 @@ router.beforeEach(async (to, from, next) => {
 
   // 检查是否需要访客状态（已登录用户访问登录/注册页）
   if (to.meta.requiresGuest && isAuthenticated) {
-    // 如果首次登录且资料未完成，跳转到资料填写页
-    if (isFirstLogin) {
-      next('/profile-setup')
-    } else {
-      next('/chat')
-    }
-    return
-  }
-
-  // 检查是否需要填写资料
-  if (to.meta.requiresProfileSetup && !isFirstLogin) {
     next('/chat')
-    return
-  }
-
-  // 首次登录且资料未完成，强制跳转到资料填写页（除非已在资料填写页）
-  if (isAuthenticated && isFirstLogin && to.name !== 'ProfileSetup') {
-    next('/profile-setup')
     return
   }
 

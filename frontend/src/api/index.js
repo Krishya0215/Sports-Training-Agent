@@ -79,7 +79,7 @@ export default {
 
       // 添加附件参数
       if (options.attachments && options.attachments.length > 0) {
-        requestBody.attachments = options.attachments.map(a => a.assetId)
+        requestBody.attachments = options.attachments.map(a => String(a.assetId))
       }
 
       const response = await fetch('/api/query', {
@@ -155,7 +155,7 @@ export default {
   loadKnowledge(forceReload = false) {
     return api.post('/knowledge/load', null, {
       params: { force_reload: forceReload },
-      timeout: 300000  // 知识库加载最多等 5 分钟
+      timeout: 0  // 知识库加载不限超时（含 OCR 处理可能超过 10 分钟）
     })
   },
 
@@ -203,7 +203,8 @@ export default {
     return api.post('/knowledge/documents/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      }
+      },
+      timeout: 0  // 文件上传不设超时限制
     })
   },
 

@@ -7,6 +7,10 @@ from typing import Optional, Dict
 import hashlib
 import secrets
 import re
+import smtplib
+import os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from backend.api.database import db
 
@@ -130,9 +134,6 @@ class AuthService:
         expires_at = (datetime.now() + timedelta(days=7)).isoformat()
         
         if db.save_token(token, user["id"], expires_at):
-            # 更新首次登录状态
-            db.update_first_login_status(user_email, is_first_login=False)
-            
             return {
                 "success": True,
                 "message": "登录成功",
@@ -186,10 +187,60 @@ class AuthService:
             "username": user["username"],
             "email": user["email"],
             "role": user.get("role", "user"),
+            "is_first_login": bool(user.get("is_first_login", False)),
             "profile_completed": bool(user.get("profile_completed", False)),
             "avatar_url": f"/avatars/{user['avatar']}" if user.get("avatar") else None
         }
     
+    @staticmethod
+    def send_email(to_email: str, code: str) -> bool:
+        """
+        发送验证码邮件
+        从环境变量读取 SMTP 配置：
+          EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASSWORD, EMAIL_FROM
+        """
+        host = os.environ.get("EMAIL_HOST", "smtp.qq.com")
+        port = int(os.environ.get("EMAIL_PORT", "465"))
+        user = os.environ.get("EMAIL_USER", "")
+        password = os.environ.get("EMAIL_PASSWORD", "")
+        from_addr = os.environ.get("EMAIL_FROM", user)
+
+        if not user or not password:
+            print(f"[警告] 邮件配置缺失，验证码 {code} 未发送到 {to_email}")
+            return False
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "【运动训练助手】密码重置验证码"
+        msg["From"] = from_addr
+        msg["To"] = to_email
+
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;
+                    border:1px solid #e5e7eb;border-radius:8px;">
+          <h2 style="color:#2563eb;margin-bottom:8px;">密码重置验证码</h2>
+          <p style="color:#374151;">您正在重置运动训练助手账号密码，验证码为：</p>
+          <div style="font-size:36px;font-weight:bold;letter-spacing:8px;
+                      color:#111827;text-align:center;margin:24px 0;">{code}</div>
+          <p style="color:#6b7280;font-size:13px;">验证码 10 分钟内有效，请勿泄露给他人。</p>
+          <p style="color:#6b7280;font-size:13px;">如非本人操作，请忽略此邮件。</p>
+        </div>
+        """
+        msg.attach(MIMEText(html, "html", "utf-8"))
+
+        try:
+            if port == 465:
+                server = smtplib.SMTP_SSL(host, port, timeout=10)
+            else:
+                server = smtplib.SMTP(host, port, timeout=10)
+                server.starttls()
+            server.login(user, password)
+            server.sendmail(from_addr, [to_email], msg.as_string())
+            server.quit()
+            return True
+        except Exception as e:
+            print(f"[邮件发送失败] {e}")
+            return False
+
     @staticmethod
     def send_verification_code(email: str) -> Dict:
         """
@@ -214,14 +265,12 @@ class AuthService:
         expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
         
         if db.save_verification_code(email, code, expires_at):
-            # 实际应用中这里应该发送邮件
-            # 这里仅模拟，将验证码打印到控制台
-            print(f"[验证码] {email}: {code}")
-            
+            if not AuthService.send_email(email, code):
+                return {"success": False, "message": "验证码发送失败，请检查邮件配置或稍后重试"}
+
             return {
                 "success": True,
-                "message": "验证码已发送到您的邮箱",
-                "code": code  # 仅用于测试，生产环境不应返回
+                "message": "验证码已发送到您的邮箱，请注意查收"
             }
         else:
             return {"success": False, "message": "发送验证码失败，请稍后重试"}

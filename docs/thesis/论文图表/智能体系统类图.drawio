@@ -1,0 +1,168 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="agent-system-class" name="智能体系统类图">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- 标题 -->
+        <mxCell id="title" value="智能体系统类图" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="300" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- MultiAgentTrainingSystem 主类 -->
+        <mxCell id="main-class" value="&lt;b&gt;MultiAgentTrainingSystem&lt;/b&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="350" y="60" width="300" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="main-attrs" value="&lt;div&gt;- vector_store_service: VectorStoreService&lt;/div&gt;&lt;div&gt;- retriever: AdvancedRetriever&lt;/div&gt;&lt;div&gt;- memory_manager: MemoryManager&lt;/div&gt;&lt;div&gt;- coaches: Dict[str, CoachAgent]&lt;/div&gt;&lt;div&gt;- coach_catalog: Dict[str, Dict]&lt;/div&gt;&lt;div&gt;- synthesis_chain: Chain&lt;/div&gt;&lt;div&gt;- graph: CompiledStateGraph&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="main-class">
+          <mxGeometry y="26" width="300" height="104" as="geometry"/>
+        </mxCell>
+        <mxCell id="main-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;" vertex="1" parent="main-class">
+          <mxGeometry y="130" width="300" height="8" as="geometry"/>
+        </mxCell>
+        <mxCell id="main-methods" value="&lt;div&gt;+ __init__()&lt;/div&gt;&lt;div&gt;+ _init_coaches()&lt;/div&gt;&lt;div&gt;+ _init_synthesizer()&lt;/div&gt;&lt;div&gt;+ _build_graph(): StateGraph&lt;/div&gt;&lt;div&gt;+ process_request(question, profile)&lt;/div&gt;&lt;div&gt;+ get_memory_summary(): Dict&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="main-class">
+          <mxGeometry y="138" width="300" height="82" as="geometry"/>
+        </mxCell>
+
+        <!-- CoachAgent 基类 -->
+        <mxCell id="coach-class" value="&lt;b&gt;CoachAgent&lt;/b&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="80" y="320" width="240" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="coach-attrs" value="&lt;div&gt;- name: str&lt;/div&gt;&lt;div&gt;- role: str&lt;/div&gt;&lt;div&gt;- model: ChatModel&lt;/div&gt;&lt;div&gt;- prompt: PromptTemplate&lt;/div&gt;&lt;div&gt;- chain: Chain&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="coach-class">
+          <mxGeometry y="26" width="240" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="coach-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;" vertex="1" parent="coach-class">
+          <mxGeometry y="100" width="240" height="8" as="geometry"/>
+        </mxCell>
+        <mxCell id="coach-methods" value="&lt;div&gt;+ process(state, context): str&lt;/div&gt;&lt;div&gt;+ _format_docs(docs): str&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="coach-class">
+          <mxGeometry y="108" width="240" height="52" as="geometry"/>
+        </mxCell>
+
+        <!-- PlanningCoach -->
+        <mxCell id="planning-class" value="&lt;b&gt;PlanningCoach&lt;/b&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="520" width="180" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="planning-desc" value="训练规划教练&lt;div&gt;max_tokens=1400&lt;/div&gt;&lt;div&gt;temperature=0.35&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="planning-class">
+          <mxGeometry y="26" width="180" height="54" as="geometry"/>
+        </mxCell>
+
+        <!-- TechniqueCoach -->
+        <mxCell id="technique-class" value="&lt;b&gt;TechniqueCoach&lt;/b&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="220" y="520" width="180" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="technique-desc" value="技术指导教练&lt;div&gt;max_tokens=420&lt;/div&gt;&lt;div&gt;temperature=0.2&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="technique-class">
+          <mxGeometry y="26" width="180" height="54" as="geometry"/>
+        </mxCell>
+
+        <!-- RecoveryCoach -->
+        <mxCell id="recovery-class" value="&lt;b&gt;RecoveryCoach&lt;/b&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="120" y="620" width="180" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="recovery-desc" value="运动康复教练&lt;div&gt;max_tokens=420&lt;/div&gt;&lt;div&gt;temperature=0.2&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="recovery-class">
+          <mxGeometry y="26" width="180" height="54" as="geometry"/>
+        </mxCell>
+
+        <!-- TrainingState -->
+        <mxCell id="state-class" value="&lt;b&gt;TrainingState&lt;/b&gt; (TypedDict)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="680" y="100" width="220" height="200" as="geometry"/>
+        </mxCell>
+        <mxCell id="state-attrs" value="&lt;div&gt;user_input: str&lt;/div&gt;&lt;div&gt;user_profile: dict&lt;/div&gt;&lt;div&gt;retrieved_docs: List&lt;/div&gt;&lt;div&gt;routing: Dict[str, Any]&lt;/div&gt;&lt;div&gt;selected_agents: List[str]&lt;/div&gt;&lt;div&gt;execution_plan: List[List[str]]&lt;/div&gt;&lt;div&gt;agent_results: Dict[str, str]&lt;/div&gt;&lt;div&gt;final_response: str&lt;/div&gt;&lt;div&gt;workflow_history: List[str]&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="state-class">
+          <mxGeometry y="26" width="220" height="134" as="geometry"/>
+        </mxCell>
+        <mxCell id="state-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;" vertex="1" parent="state-class">
+          <mxGeometry y="160" width="220" height="8" as="geometry"/>
+        </mxCell>
+        <mxCell id="state-methods" value="&lt;div&gt;状态流转于各节点之间&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="state-class">
+          <mxGeometry y="168" width="220" height="32" as="geometry"/>
+        </mxCell>
+
+        <!-- Synthesizer -->
+        <mxCell id="synth-class" value="&lt;b&gt;Synthesizer&lt;/b&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="680" y="340" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="synth-attrs" value="&lt;div&gt;- synthesis_prompt: PromptTemplate&lt;/div&gt;&lt;div&gt;- synthesis_model: ChatModel&lt;/div&gt;&lt;div&gt;- chain: Chain&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="synth-class">
+          <mxGeometry y="26" width="220" height="54" as="geometry"/>
+        </mxCell>
+        <mxCell id="synth-line" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;" vertex="1" parent="synth-class">
+          <mxGeometry y="80" width="220" height="8" as="geometry"/>
+        </mxCell>
+        <mxCell id="synth-methods" value="&lt;div&gt;+ invoke(state): str&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="synth-class">
+          <mxGeometry y="88" width="220" height="32" as="geometry"/>
+        </mxCell>
+
+        <!-- 外部依赖 - VectorStoreService -->
+        <mxCell id="vector-service" value="VectorStoreService" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="350" y="320" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- 外部依赖 - AdvancedRetriever -->
+        <mxCell id="retriever-service" value="AdvancedRetriever" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="350" y="400" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- 外部依赖 - MemoryManager -->
+        <mxCell id="memory-service" value="MemoryManager" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="350" y="480" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- LLM -->
+        <mxCell id="llm-service" value="DashScope LLM" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="500" y="400" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- 关系线 - 组合关系 -->
+        <mxCell id="rel1" value="1..*" style="endArrow=diamondThin;endSize=12;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;startArrow=none;startSize=12;" edge="1" parent="1" source="coach-class" target="main-class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- 关系线 - 继承关系 -->
+        <mxCell id="rel2" style="endArrow=block;endSize=16;endFill=0;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="planning-class" target="coach-class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel3" style="endArrow=block;endSize=16;endFill=0;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="technique-class" target="coach-class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel4" style="endArrow=block;endSize=16;endFill=0;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="recovery-class" target="coach-class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- 关系线 - 依赖关系 -->
+        <mxCell id="rel5" style="endArrow=open;endSize=12;html=1;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="main-class" target="state-class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel6" style="endArrow=open;endSize=12;html=1;dashed=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="main-class" target="synth-class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- 关系线 - 依赖外部服务 -->
+        <mxCell id="rel7" style="endArrow=open;endSize=12;html=1;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="main-class" target="vector-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel8" style="endArrow=open;endSize=12;html=1;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="vector-service" target="retriever-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel9" style="endArrow=open;endSize=12;html=1;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="retriever-service" target="memory-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="rel10" style="endArrow=open;endSize=12;html=1;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="retriever-service" target="llm-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- 图例 -->
+        <mxCell id="legend-box" value="图例" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#f5f5f5;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;" vertex="1" parent="1">
+          <mxGeometry x="680" y="520" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend1" value="◇ 组合关系 (包含)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="legend-box">
+          <mxGeometry y="26" width="220" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend2" value="▷ 继承关系 (扩展)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="legend-box">
+          <mxGeometry y="52" width="220" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend3" value="---&gt; 依赖关系 (使用)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="legend-box">
+          <mxGeometry y="78" width="220" height="26" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

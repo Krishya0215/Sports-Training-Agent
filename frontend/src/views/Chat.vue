@@ -77,7 +77,7 @@
               <div class="avatar">{{ message.role === 'user' ? '我' : 'AI' }}</div>
               <div class="message-card">
                 <div
-                  v-if="message.role === 'assistant' && (message.thinking || message.progressLogs?.length)"
+                  v-if="message.role === 'assistant' && (message.thinking?.trim() || message.progressLogs?.length)"
                   class="thinking-container"
                 >
                   <button 
@@ -255,19 +255,7 @@
             <span class="quick-icon">📋</span>
             生成计划
           </button>
-          <button type="button" class="quick-btn" @click="openTrainingRecordModal()">
-            <span class="quick-icon">📝</span>
-            记录训练
-          </button>
-          <button type="button" class="quick-btn" @click="openDietRecordModal()">
-            <span class="quick-icon">🍎</span>
-            记录饮食
-          </button>
-          <button type="button" class="quick-btn" @click="openWeightRecordModal()">
-            <span class="quick-icon">⚖️</span>
-            记录体重
-          </button>
-          
+
         </div>
 
         <div class="response-mode-card">
@@ -437,235 +425,6 @@
       </div>
     </div>
 
-    <div v-if="showTrainingRecordModal" class="modal-mask" @click.self="closeTrainingRecordModal">
-      <div class="modal-card plan-modal record-modal">
-        <button type="button" class="modal-close" @click="closeTrainingRecordModal">✕</button>
-
-        <div class="record-modal-head">
-          <div>
-            <p class="coach-tag">训练记录</p>
-            <h2>记录今天的训练表现</h2>
-            <p class="modal-copy">填写训练类型、时长和身体反馈，方便后续分析训练节奏与恢复状态。</p>
-          </div>
-        </div>
-
-        <form @submit.prevent="submitTrainingRecord">
-          <section class="modal-section">
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="training-type">训练类型</label>
-                <select id="training-type" v-model="trainingRecordData.training_type" class="form-input">
-                  <option value="">请选择</option>
-                  <option value="力量训练">力量训练</option>
-                  <option value="有氧训练">有氧训练</option>
-                  <option value="跑步">跑步</option>
-                  <option value="HIIT">HIIT</option>
-                  <option value="瑜伽拉伸">瑜伽拉伸</option>
-                  <option value="球类运动">球类运动</option>
-                  <option value="其他">其他</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="training-duration">训练时长（分钟）</label>
-                <input
-                  id="training-duration"
-                  v-model.number="trainingRecordData.duration"
-                  class="form-input"
-                  type="number"
-                  min="1"
-                  max="600"
-                  placeholder="分钟"
-                >
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="training-intensity">训练强度</label>
-              <select id="training-intensity" v-model="trainingRecordData.intensity" class="form-input">
-                <option value="">请选择</option>
-                <option value="低">低</option>
-                <option value="中">中</option>
-                <option value="高">高</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">疲劳程度</label>
-              <div class="range-selector">
-                <button
-                  v-for="level in [1, 2, 3, 4, 5]"
-                  :key="`fatigue-${level}`"
-                  type="button"
-                  class="fatigue-option"
-                  :class="{ selected: trainingRecordData.fatigue_level === level }"
-                  @click="trainingRecordData.fatigue_level = level"
-                >
-                  {{ level }}
-                </button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">疼痛程度</label>
-              <div class="range-selector">
-                <button
-                  v-for="level in [0, 1, 2, 3, 4, 5]"
-                  :key="`pain-${level}`"
-                  type="button"
-                  class="pain-option"
-                  :class="{ selected: trainingRecordData.pain_level === level }"
-                  @click="trainingRecordData.pain_level = level"
-                >
-                  {{ level }}
-                </button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="training-notes">备注</label>
-              <textarea
-                id="training-notes"
-                v-model.trim="trainingRecordData.notes"
-                class="form-textarea"
-                rows="4"
-                placeholder="例如：今天状态不错，下肢发力感明显，右膝有轻微不适"
-              />
-            </div>
-          </section>
-
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" @click="closeTrainingRecordModal">取消</button>
-            <button type="submit" class="btn btn-primary" :disabled="savingTrainingRecord">
-              {{ savingTrainingRecord ? '保存中...' : '保存训练记录' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div v-if="showDietRecordModal" class="modal-mask" @click.self="closeDietRecordModal">
-      <div class="modal-card plan-modal record-modal">
-        <button type="button" class="modal-close" @click="closeDietRecordModal">✕</button>
-
-        <div class="record-modal-head">
-          <div>
-            <p class="coach-tag">饮食记录</p>
-            <h2>记录今天吃了什么</h2>
-            <p class="modal-copy">记录餐别和食物内容即可，系统会结合训练安排继续分析你的饮食情况。</p>
-          </div>
-        </div>
-
-        <form @submit.prevent="submitDietRecord">
-          <section class="modal-section">
-            <div class="form-group">
-              <label class="form-label" for="meal-type">餐别</label>
-              <select id="meal-type" v-model="dietRecordData.meal_type" class="form-input">
-                <option value="">请选择</option>
-                <option value="早餐">早餐</option>
-                <option value="午餐">午餐</option>
-                <option value="晚餐">晚餐</option>
-                <option value="加餐">加餐</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="food-content">食物内容</label>
-              <textarea
-                id="food-content"
-                v-model.trim="dietRecordData.food_content"
-                class="form-textarea"
-                rows="4"
-                placeholder="例如：鸡胸肉沙拉、米饭半碗、无糖酸奶"
-              />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="diet-notes">备注</label>
-              <textarea
-                id="diet-notes"
-                v-model.trim="dietRecordData.notes"
-                class="form-textarea"
-                rows="3"
-                placeholder="例如：训练后 30 分钟内进食，今天饮水偏少"
-              />
-            </div>
-          </section>
-
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" @click="closeDietRecordModal">取消</button>
-            <button type="submit" class="btn btn-primary" :disabled="savingDietRecord">
-              {{ savingDietRecord ? '保存中...' : '保存饮食记录' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div v-if="showWeightRecordModal" class="modal-mask" @click.self="closeWeightRecordModal">
-      <div class="modal-card plan-modal record-modal">
-        <button type="button" class="modal-close" @click="closeWeightRecordModal">✕</button>
-
-        <div class="record-modal-head">
-          <div>
-            <p class="coach-tag">体重记录</p>
-            <h2>记录体重变化</h2>
-            <p class="modal-copy">记录体重即可，体脂率可以选填，方便后续观察减脂、增肌或维持阶段的趋势。</p>
-          </div>
-        </div>
-
-        <form @submit.prevent="submitWeightRecord">
-          <section class="modal-section">
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="weight-value">体重</label>
-                <input
-                  id="weight-value"
-                  v-model.number="weightRecordData.weight"
-                  class="form-input weight-input"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  placeholder="kg"
-                >
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="body-fat-value">体脂率（选填）</label>
-                <input
-                  id="body-fat-value"
-                  v-model.number="weightRecordData.body_fat"
-                  class="form-input"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  placeholder="%"
-                >
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="weight-notes">备注</label>
-              <textarea
-                id="weight-notes"
-                v-model.trim="weightRecordData.notes"
-                class="form-textarea"
-                rows="3"
-                placeholder="例如：晨起空腹测量，昨晚睡眠一般"
-              />
-            </div>
-          </section>
-
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" @click="closeWeightRecordModal">取消</button>
-            <button type="submit" class="btn btn-primary" :disabled="savingWeightRecord">
-              {{ savingWeightRecord ? '保存中...' : '保存体重记录' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -706,9 +465,8 @@ const getUserMultiAgentModeKey = () => {
 
 const suggestions = [
   '我想生成一份运动训练计划',
-  '帮我安排今天的训练内容',
-  '我最近恢复不太好，怎么办？',
-  '帮我分析一下训练节奏'
+  '如何提升跑步耐力？',
+  '膝盖受伤后如何恢复？'
 ]
 
 const weekdayOptions = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
@@ -723,6 +481,21 @@ const inputRef = ref(null)
 const fileInputRef = ref(null)
 const pendingPlanContext = ref(null)
 const enableMultiAgent = ref(true)
+
+// 生成唯一对话ID
+const generateConversationId = () => `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+// 获取当前对话的 conversationId（没有则新建）
+const getCurrentConversationId = () => {
+  if (currentChat.value !== null && chatHistory.value[currentChat.value]) {
+    const target = chatHistory.value[currentChat.value]
+    if (!target.conversationId) {
+      target.conversationId = generateConversationId()
+    }
+    return target.conversationId
+  }
+  return null
+}
 
 // 附件相关状态
 const attachments = ref([])
@@ -743,38 +516,6 @@ const questionnaireData = ref({
   intensity: '',
   injury: '',
   injury_detail: ''
-})
-
-// 记录模态框相关状态
-const showTrainingRecordModal = ref(false)
-const showDietRecordModal = ref(false)
-const showWeightRecordModal = ref(false)
-const savingTrainingRecord = ref(false)
-const savingDietRecord = ref(false)
-const savingWeightRecord = ref(false)
-
-// 训练记录表单数据
-const trainingRecordData = ref({
-  training_type: '',
-  duration: 30,
-  intensity: '',
-  fatigue_level: 3,
-  pain_level: 0,
-  notes: ''
-})
-
-// 饮食记录表单数据
-const dietRecordData = ref({
-  meal_type: '',
-  food_content: '',
-  notes: ''
-})
-
-// 体重记录表单数据
-const weightRecordData = ref({
-  weight: '',
-  body_fat: '',
-  notes: ''
 })
 
 const questionnaireQuestions = [
@@ -1188,9 +929,7 @@ const isPlanLikeAssistantMessage = (message = {}) => {
   const content = String(message.content || '')
   return Boolean(
     message.planCard ||
-    isTrainingPlanContent(content) ||
-    /(^|\n)##\s*第\d+周/.test(content) ||
-    /(^|\n)###\s*训练日\d+/.test(content)
+    isTrainingPlanContent(content)
   )
 }
 
@@ -1290,11 +1029,11 @@ const saveChatHistoryToLocal = () => {
 const loadChatHistoryFromLocal = () => {
   try {
     const raw = localStorage.getItem(getUserChatHistoryKey())
-    if (!raw) return []
-    return normalizeChatHistory(JSON.parse(raw))
+    if (raw === null) return { exists: false, history: [] }
+    return { exists: true, history: normalizeChatHistory(JSON.parse(raw) || []) }
   } catch (error) {
     console.error('读取本地聊天记录失败:', error)
-    return []
+    return { exists: false, history: [] }
   }
 }
 
@@ -1304,6 +1043,58 @@ const clearChatHistoryLocal = () => {
     localStorage.removeItem(getUserChatHistoryKey())
   } catch (error) {
     console.error('清除聊天记录失败:', error)
+  }
+}
+
+// 修复旧对话中缺失的计划卡片（按 ai_response 内容匹配训练计划）
+const repairPlanCards = async () => {
+  try {
+    const response = await api.get('/training/plans')
+    const plans = (response?.plans || [])
+    if (!plans.length) return
+
+    // 建立 ai_response 内容 -> plan 的映射
+    const planByContent = new Map()
+    for (const plan of plans) {
+      if (plan.ai_response) {
+        planByContent.set(plan.ai_response.trim(), plan)
+      }
+    }
+
+    let modified = false
+    for (const item of chatHistory.value) {
+      for (const msg of (item.conversation || [])) {
+        if (msg.role === 'assistant' && !msg.planCard && msg.content && isTrainingPlanContent(msg.content)) {
+          const plan = planByContent.get(msg.content.trim())
+          if (plan) {
+            const planMeta = plan.metadata || {}
+            msg.planCard = {
+              planId: plan.id,
+              title: getDisplayPlanTitle(plan.title || ''),
+              subtitle: planMeta.goal || plan.goal || '',
+              weeklyDays: planMeta.weekly_days || '',
+              duration: planMeta.daily_duration || '',
+              intensity: planMeta.intensity || '',
+              summary: ''
+            }
+            msg.content = ''
+            // 同步更新当前显示的 messages
+            const displayIdx = messages.value.findIndex(
+              (m) => m.role === 'assistant' && m.content && m.content.trim() === plan.ai_response.trim()
+            )
+            if (displayIdx !== -1) {
+              messages.value[displayIdx] = { ...messages.value[displayIdx], planCard: msg.planCard, content: '' }
+            }
+            modified = true
+          }
+        }
+      }
+    }
+    if (modified) {
+      saveChatHistoryToLocal()
+    }
+  } catch (e) {
+    console.error('修复计划卡片失败', e)
   }
 }
 
@@ -1453,7 +1244,7 @@ const buildPlanTitle = (planContext = null) => {
   return `${goal}`
 }
 
-const buildPlanPayloadFromMessage = (message, planContext = null) => {
+const buildPlanPayloadFromMessage = (message, planContext = null, conversationId = null) => {
   const questionnaire = planContext?.questionnaire || {}
   const content = message?.content || ''
   const startDate = getToday()
@@ -1468,7 +1259,8 @@ const buildPlanPayloadFromMessage = (message, planContext = null) => {
     metadata: questionnaire,
     source_prompt: planContext?.prompt || '',
     ai_response: content,
-    selected_weekdays: []
+    selected_weekdays: [],
+    conversation_id: conversationId || null
   }
 }
 
@@ -1563,8 +1355,8 @@ const createPlanCardMessage = (savedPlan, planContext = null) => {
   })
 }
 
-const createPlanFromAiResponse = async (message, planContext = null) => {
-  const response = await api.post('/training/plans', buildPlanPayloadFromMessage(message, planContext))
+const createPlanFromAiResponse = async (message, planContext = null, conversationId = null) => {
+  const response = await api.post('/training/plans', buildPlanPayloadFromMessage(message, planContext, conversationId))
   if (!response?.plan?.id) {
     throw new Error('训练计划生成失败')
   }
@@ -1591,14 +1383,13 @@ const isErrorLikeResponse = (content = '') => {
   return errorMarkers.some((marker) => text.includes(marker))
 }
 
-// 检测内容是否为训练计划
+// 检测内容是否为训练计划（要求同时具备结构性标记，避免普通建议被误判）
 const isTrainingPlanContent = (content = '') => {
-  const cleanedText = removeMarkdownFormat(String(content)).toLowerCase()
-  const trainingPlanKeywords = [
-    '训练计划', '训练日', '每周', '第一周', '第二周', '第三周', '第四周',
-    '训练内容', '训练目标', '恢复建议', '训练时长', '训练强度'
-  ]
-  return trainingPlanKeywords.some(keyword => cleanedText.includes(keyword.toLowerCase()))
+  const text = String(content || '')
+  // 必须同时满足：有周次结构 AND 有训练日结构
+  const hasWeekStructure = /第[一二三四1-4]周|##\s*第\d+周/m.test(text)
+  const hasDayStructure = /训练日[一二三四五六七1-7]|###\s*训练日\s*\d+|(^|\n)训练日\s*[一二三四五六七]/m.test(text)
+  return hasWeekStructure && hasDayStructure
 }
 
 const shouldCreateTrainingPlan = (content = '', planContext = null) => {
@@ -1675,6 +1466,7 @@ const updateCurrentConversation = (question, assistantMessage, currentAttachment
     question,
     answer: assistantMessage.content,
     timestamp: new Date(),
+    conversationId: generateConversationId(),
     conversation: sanitizeConversation(
       [
         normalizeMessage({ role: 'user', content: question, timestamp: new Date() }),
@@ -1773,7 +1565,7 @@ const handleFileSelect = async (event) => {
       formData.append('file', file)
       formData.append('description', '')
 
-      const response = await fetch('http://localhost:8000/api/chat/upload', {
+      const response = await fetch('/api/chat/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1819,9 +1611,18 @@ const sendMessage = async (text = null, options = {}) => {
   const planContext = options.planContext || pendingPlanContext.value
   const useMultiAgent = shouldUseMultiAgentQuery(question, planContext)
   const userProfile = buildUserProfileForQuery(question, planContext)
-  if (!question || loading.value) return
 
-  messages.value.push(normalizeMessage({ role: 'user', content: question, timestamp: new Date() }))
+  console.log('[sendMessage] question:', JSON.stringify(question), 'attachments:', JSON.stringify(attachments.value), 'loading:', loading.value)
+
+  if (!question && !attachments.value.length || loading.value) {
+    console.log('[sendMessage] blocked: no question and no attachments, or loading')
+    return
+  }
+
+  // 有附件但没有文字时，用默认提示语
+  const effectiveQuestion = question || '请分析我上传的图片/文档'
+
+  messages.value.push(normalizeMessage({ role: 'user', content: effectiveQuestion, timestamp: new Date() }))
   inputMessage.value = ''
   loading.value = true
   await scrollToBottom()
@@ -1835,16 +1636,18 @@ const sendMessage = async (text = null, options = {}) => {
       thinking: '',
       timestamp: new Date()
     }))
-    
+
     // 流式接收思考过程和答案
     let thinkingContent = ''
     let answerContent = ''
     let schedulerInfo = null
     let progressLogs = []
     const currentAttachments = [...attachments.value] // 保存当前附件列表
+    // 提前确定 conversationId：优先用当前对话的，否则预先生成一个新的
+    const conversationId = getCurrentConversationId() || generateConversationId()
 
     await api.queryStream(
-      question,
+      effectiveQuestion,
       (chunk, type, data) => {
         if (type === 'thinking') {
           // 如果是第一次收到思考内容，自动展开思考过程
@@ -1884,7 +1687,12 @@ const sendMessage = async (text = null, options = {}) => {
         })
 
         messages.value[assistantMessageIndex] = assistantMessage
-        updateCurrentConversation(question, assistantMessage, currentAttachments)
+        updateCurrentConversation(effectiveQuestion, assistantMessage, currentAttachments)
+
+        // 确保当前对话保存了 conversationId（新对话在 unshift 后赋值）
+        if (currentChat.value !== null && chatHistory.value[currentChat.value] && !chatHistory.value[currentChat.value].conversationId) {
+          chatHistory.value[currentChat.value].conversationId = conversationId
+        }
 
         // 清空附件
         attachments.value = []
@@ -1892,7 +1700,7 @@ const sendMessage = async (text = null, options = {}) => {
         // 如果存在planContext或者内容看起来像训练计划，则生成卡片
         if (shouldCreateTrainingPlan(answerContent, planContext || null)) {
           // 异步处理plan生成，不阻塞消息流
-          generatePlanAsync(assistantMessage, planContext || null)
+          generatePlanAsync(assistantMessage, planContext || null, conversationId)
         }
       },
       (error) => {
@@ -1910,7 +1718,8 @@ const sendMessage = async (text = null, options = {}) => {
       {
         useMultiAgent,
         userProfile,
-        attachments: currentAttachments
+        attachments: currentAttachments,
+        conversationId
       }
     )
 
@@ -1923,9 +1732,9 @@ const sendMessage = async (text = null, options = {}) => {
 }
 
 // 异步处理plan生成，不阻塞消息流
-const generatePlanAsync = async (message, planContext) => {
+const generatePlanAsync = async (message, planContext, conversationId = null) => {
   try {
-    const savedPlan = await createPlanFromAiResponse(message, planContext)
+    const savedPlan = await createPlanFromAiResponse(message, planContext, conversationId)
     const planCardMessage = createPlanCardMessage(savedPlan, planContext)
 
     // 创建更新后的消息对象 - 用简短总结替换完整训练计划文本，并添加卡片
@@ -2216,150 +2025,6 @@ const closeQuestionnaireModal = () => {
   }
 }
 
-// 训练记录模态框
-const openTrainingRecordModal = () => {
-  showTrainingRecordModal.value = true
-  resetTrainingRecordForm()
-}
-
-const closeTrainingRecordModal = () => {
-  showTrainingRecordModal.value = false
-}
-
-const resetTrainingRecordForm = () => {
-  trainingRecordData.value = {
-    training_type: '',
-    duration: 30,
-    intensity: '',
-    fatigue_level: 3,
-    pain_level: 0,
-    notes: ''
-  }
-}
-
-const submitTrainingRecord = async () => {
-  if (!trainingRecordData.value.training_type) {
-    alert('请选择训练类型')
-    return
-  }
-
-  savingTrainingRecord.value = true
-
-  try {
-    await api.post('/training/records', {
-      date: new Date().toISOString().split('T')[0],
-      training_type: trainingRecordData.value.training_type,
-      duration: trainingRecordData.value.duration,
-      intensity: trainingRecordData.value.intensity,
-      fatigue_level: trainingRecordData.value.fatigue_level,
-      pain_level: trainingRecordData.value.pain_level,
-      notes: trainingRecordData.value.notes,
-      completion_status: 'completed'
-    })
-
-    alert('训练记录已保存！')
-    closeTrainingRecordModal()
-    resetTrainingRecordForm()
-  } catch (error) {
-    alert('保存失败：' + error.message)
-  } finally {
-    savingTrainingRecord.value = false
-  }
-}
-
-// 饮食记录模态框
-const openDietRecordModal = () => {
-  showDietRecordModal.value = true
-  resetDietRecordForm()
-}
-
-const closeDietRecordModal = () => {
-  showDietRecordModal.value = false
-}
-
-const resetDietRecordForm = () => {
-  dietRecordData.value = {
-    meal_type: '',
-    food_content: '',
-    notes: ''
-  }
-}
-
-const submitDietRecord = async () => {
-  if (!dietRecordData.value.meal_type || !dietRecordData.value.food_content) {
-    alert('请填写餐别和食物内容')
-    return
-  }
-
-  savingDietRecord.value = true
-
-  try {
-    await api.post('/daily/records', {
-      date: new Date().toISOString().split('T')[0],
-      meal_type: dietRecordData.value.meal_type,
-      food_content: dietRecordData.value.food_content,
-      notes: dietRecordData.value.notes
-    })
-
-    alert('饮食记录已保存！')
-    closeDietRecordModal()
-    resetDietRecordForm()
-  } catch (error) {
-    alert('保存失败：' + error.message)
-  } finally {
-    savingDietRecord.value = false
-  }
-}
-
-// 体重记录模态框
-const openWeightRecordModal = () => {
-  showWeightRecordModal.value = true
-  resetWeightRecordForm()
-}
-
-const closeWeightRecordModal = () => {
-  showWeightRecordModal.value = false
-}
-
-const resetWeightRecordForm = () => {
-  weightRecordData.value = {
-    weight: '',
-    body_fat: '',
-    notes: ''
-  }
-}
-
-const submitWeightRecord = async () => {
-  if (!weightRecordData.value.weight) {
-    alert('请输入体重')
-    return
-  }
-
-  savingWeightRecord.value = true
-
-  try {
-    const payload = {
-      date: new Date().toISOString().split('T')[0],
-      weight: weightRecordData.value.weight,
-      notes: weightRecordData.value.notes
-    }
-
-    if (weightRecordData.value.body_fat !== '' && weightRecordData.value.body_fat !== null && weightRecordData.value.body_fat !== undefined) {
-      payload.body_fat = weightRecordData.value.body_fat
-    }
-
-    await api.post('/weight/records', payload)
-
-    alert('体重记录已保存！')
-    closeWeightRecordModal()
-    resetWeightRecordForm()
-  } catch (error) {
-    alert('保存失败：' + error.message)
-  } finally {
-    savingWeightRecord.value = false
-  }
-}
-
 const handleEnter = (event) => {
   if (!event.shiftKey) {
     sendMessage()
@@ -2386,17 +2051,23 @@ onMounted(async () => {
     console.error('读取多智能体模式失败:', error)
   }
 
-  const localHistory = loadChatHistoryFromLocal()
-  if (localHistory.length) {
+  const { exists: localExists, history: localHistory } = loadChatHistoryFromLocal()
+  if (localExists) {
+    // localStorage 里有记录（即使是空数组也尊重，说明用户删除过）
     chatHistory.value = localHistory
   } else {
     try {
       const response = await api.getChatHistory()
       chatHistory.value = normalizeChatHistory(response?.history || [])
+      // 第一次从后端加载后立即写入 localStorage，后续刷新优先用本地
+      saveChatHistoryToLocal()
     } catch (error) {
       console.error('读取聊天历史失败:', error)
     }
   }
+
+  // 异步修复旧对话中缺失的计划卡片（不阻塞页面渲染）
+  repairPlanCards()
 
   if (route.query.autoPlan === '1') {
     const pendingPrompt = loadPendingPrompt()
@@ -2560,7 +2231,7 @@ watch(
 }
 
 .history-item.active {
-  background: linear-gradient(135deg, rgba(52, 199, 89, 0.18), rgba(52, 199, 89, 0.08));
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.05));
 }
 
 .history-main span,
@@ -3208,7 +2879,7 @@ watch(
   align-items: center;
   justify-content: center;
   padding: 24px;
-  z-index: 40;
+  z-index: 200;
 }
 
 .modal-card {
@@ -3719,139 +3390,5 @@ watch(
 .quick-icon {
   font-size: 16px;
   margin-right: 6px;
-}
-
-/* 记录模态框样式 */
-.record-modal {
-  max-width: 500px;
-}
-
-.record-modal-head {
-  margin-bottom: 10px;
-}
-
-.record-modal-head .coach-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: rgba(0, 113, 227, 0.08);
-  color: var(--color-accent);
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 14px;
-}
-
-.record-modal-head h2 {
-  margin: 0 0 10px;
-  font-size: 28px;
-  line-height: 1.3;
-  color: var(--color-text-primary);
-}
-
-.record-modal-head .modal-copy {
-  margin: 0;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #333;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  resize: vertical;
-  font-family: inherit;
-}
-
-.range-selector {
-  display: flex;
-  gap: 8px;
-}
-
-.fatigue-option,
-.pain-option {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.fatigue-option.selected,
-.pain-option.selected {
-  background-color: #4CAF50;
-  color: white;
-  border-color: #4CAF50;
-}
-
-.fatigue-option:hover,
-.pain-option:hover {
-  border-color: #4CAF50;
-}
-
-.measure-inputs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.measure-inputs > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.measure-inputs > div label {
-  font-size: 12px;
-  color: #666;
-}
-
-.weight-input {
-  font-size: 18px;
-  text-align: center;
-}
-
-@media (max-width: 720px) {
-  .record-modal {
-    padding: 24px 18px;
-  }
-
-  .form-row,
-  .measure-inputs {
-    grid-template-columns: 1fr;
-  }
-
-  .range-selector {
-    flex-wrap: wrap;
-  }
 }
 </style>

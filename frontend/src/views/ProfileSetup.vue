@@ -24,13 +24,13 @@
           <label>性别</label>
           <div class="radio-group">
             <label class="radio-label">
-              <input type="radio" v-model="formData.gender" value="male" required />
-              <span>男</span>
-            </label>
-            <label class="radio-label">
               <input type="radio" v-model="formData.gender" value="female" required />
               <span>女</span>
             </label>
+            <label class="radio-label">
+              <input type="radio" v-model="formData.gender" value="male" required />
+              <span>男</span>
+            </label>            
           </div>
         </div>
         
