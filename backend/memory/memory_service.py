@@ -30,6 +30,7 @@ class MemoryService:
             "semantic_profile": self.get_semantic_profile(user_id),
             "recent_episodes": self.get_recent_episodes(user_id, limit=10),
             "recent_diet_episodes": self.get_episodes_by_type(user_id, "diet_recorded", limit=5),
+            "recent_training_episodes": self.get_episodes_by_type(user_id, "training_completed", limit=5),
             "training_patterns": self.get_training_patterns(user_id),
             "user_profile": db.get_user_profile(user_id) or {}
         }
@@ -428,6 +429,32 @@ class MemoryService:
                     line += f"，热量 {calories} kcal"
                 if protein:
                     line += f"，蛋白质 {protein} g"
+                prompt_parts.append(line)
+
+        # 最近训练记录
+        training_episodes = context.get("recent_training_episodes", [])
+        if training_episodes:
+            today = datetime.now().strftime("%Y-%m-%d")
+            prompt_parts.append(f"\n【近期训练记录】（今天是 {today}）")
+            for ep in training_episodes:
+                event_time = ep.get("event_time", "")[:10]
+                summary = ep.get("event_summary", "")
+                payload = ep.get("payload", {})
+                date_label = "今日" if event_time == today else event_time
+                line = f"- {date_label} {summary}"
+                if not summary and payload:
+                    parts = [payload.get("training_type", "训练")]
+                    if payload.get("duration"):
+                        parts.append(f"{payload['duration']}分钟")
+                    if payload.get("intensity"):
+                        parts.append(f"{payload['intensity']}强度")
+                    if payload.get("fatigue_level"):
+                        parts.append(f"疲劳度{payload['fatigue_level']}/5")
+                    if payload.get("pain_level"):
+                        parts.append(f"疼痛度{payload['pain_level']}/5")
+                    if payload.get("notes"):
+                        parts.append(f"备注：{payload['notes'][:60]}")
+                    line = f"- {date_label} {'，'.join(parts)}"
                 prompt_parts.append(line)
 
         return "\n".join(prompt_parts) if len(prompt_parts) > 1 else "暂无用户记忆数据"

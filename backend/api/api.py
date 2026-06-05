@@ -39,7 +39,7 @@ app = FastAPI(
 # CORS配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:8861", "http://127.0.0.1:8861", "http://10.21.223.137:8861"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -766,6 +766,10 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                     analysis_text = "\n\n".join(image_analysis_parts)
                     augmented_question = f"{augmented_question}\n\n{analysis_text}"
                     logger.info(f"已将 {len(image_analysis_parts)} 张图片分析结果注入问题")
+
+                # 将memory_prompt注入到memory_context中，便于agent内部使用
+                if memory_context and memory_prompt:
+                    memory_context["_memory_prompt"] = memory_prompt
 
                 # 使用单智能体处理，注入记忆上下文
                 result = await asyncio.get_event_loop().run_in_executor(
@@ -2299,6 +2303,29 @@ async def create_training_plan(plan: TrainingPlan, authorization: Optional[str] 
         }
         plan_dict["metadata"] = metadata
 
+        # 如果metadata缺少训练参数，从用户档案中补充
+        needs_supplement = (
+            not metadata.get("weekly_days") or not metadata.get("daily_duration") or
+            not metadata.get("intensity") or not metadata.get("goal") or not metadata.get("method")
+        )
+        if needs_supplement:
+            user_profile = db.get_user_profile(user["id"])
+            if user_profile:
+                if not metadata.get("weekly_days") and user_profile.get("weekly_days"):
+                    metadata["weekly_days"] = user_profile["weekly_days"]
+                if not metadata.get("daily_duration") and user_profile.get("daily_duration"):
+                    metadata["daily_duration"] = user_profile["daily_duration"]
+                if not metadata.get("intensity") and user_profile.get("intensity_level"):
+                    metadata["intensity"] = user_profile["intensity_level"]
+                if not metadata.get("goal") and user_profile.get("goal"):
+                    metadata["goal"] = user_profile["goal"]
+                if not metadata.get("method") and user_profile.get("preferred_method"):
+                    metadata["method"] = user_profile["preferred_method"]
+                # 同步补充plan_dict顶层的goal字段
+                if not plan_dict.get("goal") or plan_dict["goal"] == "AI 教练推荐":
+                    if user_profile.get("goal"):
+                        plan_dict["goal"] = user_profile["goal"]
+
         # 标记计划基于记忆生成
         plan_dict["based_on_memory"] = True
         saved_plan = db.create_training_plan(user["id"], plan_dict)
@@ -2473,11 +2500,25 @@ async def create_training_record(record: TrainingRecord, authorization: Optional
         if saved_record.get("completion_status") == "skipped":
             event_type = "training_skipped"
 
+        # 构建详细的事件摘要，便于AI教练读取
+        summary_parts = [f"{saved_record['date']} {saved_record['training_type']}"]
+        if saved_record.get("duration"):
+            summary_parts.append(f"{saved_record['duration']}分钟")
+        if saved_record.get("intensity"):
+            summary_parts.append(f"{saved_record['intensity']}强度")
+        if saved_record.get("fatigue_level"):
+            summary_parts.append(f"疲劳度{saved_record['fatigue_level']}/5")
+        if saved_record.get("pain_level"):
+            summary_parts.append(f"疼痛度{saved_record['pain_level']}/5")
+        if saved_record.get("notes"):
+            summary_parts.append(f"备注：{saved_record['notes'][:80]}")
+        event_summary = "，".join(summary_parts)
+
         episode = _record_episode(user["id"], {
             "event_type": event_type,
             "plan_id": saved_record.get("plan_id"),
             "record_id": saved_record["id"],
-            "event_summary": f"{saved_record['date']} {saved_record['training_type']} 训练记录已保存",
+            "event_summary": event_summary,
             "trigger_source": "training_record_create",
             "payload": saved_record,
             "importance_score": 0.8,
@@ -2911,7 +2952,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "backend.api.api:app",
         host="0.0.0.0",
-        port=8000,
+        port=8860,
         reload=True,
         log_level="info"
     )

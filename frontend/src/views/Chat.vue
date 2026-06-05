@@ -1575,7 +1575,19 @@ const shouldUseMultiAgentQuery = (question, planContext = null) => {
     '评估'
   ]
 
-  return multiAgentKeywords.some((keyword) => normalizedQuestion.includes(keyword))
+  if (multiAgentKeywords.some((keyword) => normalizedQuestion.includes(keyword))) return true
+
+  // 检查确认式回复：用户简短确认 + 上下文中AI提到了计划
+  const confirmPatterns = ['需要', '好的', '可以', '来吧', '要', '是的', '好', '嗯', '行', '来', '生成']
+  const isConfirm = confirmPatterns.some((p) => normalizedQuestion.trim() === p || normalizedQuestion.trim().startsWith(p))
+  if (isConfirm) {
+    const lastAssistantMsg = messages.value.filter((m) => m.role === 'assistant' && m.content).slice(-1)[0]
+    if (lastAssistantMsg && /计划|方案|课表/.test(lastAssistantMsg.content)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 // 文件上传相关函数

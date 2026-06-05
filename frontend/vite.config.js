@@ -10,14 +10,15 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3000,
+    port: 8861,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8860',
         changeOrigin: true
       },
       '/avatars': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8860',
         changeOrigin: true
       }
     }

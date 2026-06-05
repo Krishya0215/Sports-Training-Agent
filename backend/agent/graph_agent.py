@@ -3,6 +3,7 @@ LangGraph Agent - 运动训练知识问答Agent
 使用状态图管理对话流程
 支持智能问题分类和RAG工具调用
 """
+import re
 from typing import TypedDict, List, Annotated
 from operator import add
 from langchain_core.documents import Document
@@ -31,6 +32,7 @@ class AgentState(TypedDict):
     use_rag: bool  # 是否使用RAG
     classification_confidence: float  # 分类置信度
     doc_sources: List[str]  # 去重后的文档来源文件名列表
+    memory_context: dict  # 用户记忆上下文
 
 
 class SportsTrainingAgent:
@@ -202,7 +204,8 @@ class SportsTrainingAgent:
         处理RAG检索结果的格式化
         """
         retrieved_docs = state.get("retrieved_docs", [])
-        
+        memory_prompt = state.get("memory_context", {}).get("_memory_prompt", "") or ""
+
         if retrieved_docs:
             logger.info(f"\n📋 格式化检索上下文")
             # 格式化检索到的文档
@@ -223,11 +226,15 @@ class SportsTrainingAgent:
             # 没有检索到文档
             state["context"] = "[无知识库内容]"
             state["doc_sources"] = []
-        
+
+        # 将记忆上下文追加到context中，确保LLM能看到用户的历史记录
+        if memory_prompt:
+            state["context"] = f"{state['context']}\n\n{memory_prompt}"
+
         # 获取对话历史
         chat_history = self.memory_manager.get_context_for_query()
         state["chat_history"] = chat_history
-        
+
         return state
     
     def _generate_answer_node(self, state: AgentState) -> AgentState:
@@ -258,7 +265,8 @@ class SportsTrainingAgent:
             "chat_history": chat_history if chat_history else "无历史对话"
         })
 
-        # 追加参考来源
+        # 追加参考来源（先移除LLM可能已生成的重复参考来源块）
+        answer = re.split(r'\n*(?:---\n+)?\*{0,2}📚\s*参考来源', answer)[0].rstrip()
         doc_sources = state.get("doc_sources", [])
         if doc_sources:
             sources_text = "\n".join(f"- {src}" for src in doc_sources)

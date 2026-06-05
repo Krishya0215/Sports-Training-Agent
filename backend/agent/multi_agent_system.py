@@ -2,6 +2,7 @@
 多智能体协同训练支持系统
 模拟真实运动指导团队的协作模式
 """
+import re
 from typing import TypedDict, List, Annotated, Dict, Any
 from operator import add
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -338,13 +339,26 @@ class MultiAgentTrainingSystem:
         signals = set()
         injury_text = json.dumps(profile, ensure_ascii=False)
         has_injury = any(keyword in injury_text for keyword in ["伤", "痛", "膝", "腰", "肩", "腕", "康复"])
+
+        # 提取当前问题（去掉对话历史前缀）
+        current_question = user_input
+        if "【当前问题】" in user_input:
+            current_question = user_input.split("【当前问题】")[-1].strip()
+
         # 必须包含明确的"生成/制定/给/安排/写"+ "计划/方案/课表"组合才算计划请求
-        plan_action_words = ["生成", "制定", "帮我做", "给我", "安排", "写一个", "出一个", "做一个", "来一个"]
-        plan_target_words = ["训练计划", "健身计划", "训练方案", "健身方案", "训练课表", "健身课表"]
+        plan_action_words = ["生成", "制定", "帮我做", "给我", "安排", "写一个", "出一个", "做一个", "来一个", "帮我", "请"]
+        plan_target_words = ["训练计划", "健身计划", "训练方案", "健身方案", "训练课表", "健身课表", "计划", "方案", "课表"]
         is_plan_request = (
-            any(a in user_input for a in plan_action_words) and
-            any(t in user_input for t in plan_target_words)
+            any(a in current_question for a in plan_action_words) and
+            any(t in current_question for t in plan_target_words)
         )
+        # 也匹配简短的确认式回复（上下文中AI已提出生成计划，用户回复确认）
+        if not is_plan_request:
+            confirm_patterns = ["需要", "好的", "可以", "来吧", "要", "是的", "好", "嗯", "行"]
+            has_confirm = any(current_question.strip() == p or current_question.strip().startswith(p) for p in confirm_patterns)
+            context_has_plan = "计划" in user_input or "方案" in user_input or "课表" in user_input
+            if has_confirm and context_has_plan:
+                is_plan_request = True
 
         keyword_map = {
             "technique": ["动作", "姿势", "技术", "要领", "标准", "纠正", "动作规范"],
@@ -478,7 +492,8 @@ class MultiAgentTrainingSystem:
         if not synthesized_answer:
             synthesized_answer = state.get("agent_results", {}).get("planning", "")
 
-        # 追加参考来源
+        # 追加参考来源（先移除LLM可能已生成的重复参考来源块）
+        synthesized_answer = re.split(r'\n*(?:---\n+)?\*{0,2}📚\s*参考来源', synthesized_answer)[0].rstrip()
         retrieved_docs = state.get("retrieved_docs", [])
         if retrieved_docs:
             seen_sources = []
