@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<w:hdr xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:cx="http://schemas.microsoft.com/office/drawing/2014/chartex" xmlns:cx1="http://schemas.microsoft.com/office/drawing/2015/9/8/chartex" xmlns:cx2="http://schemas.microsoft.com/office/drawing/2015/10/21/chartex" xmlns:cx3="http://schemas.microsoft.com/office/drawing/2016/5/9/chartex" xmlns:cx4="http://schemas.microsoft.com/office/drawing/2016/5/10/chartex" xmlns:cx5="http://schemas.microsoft.com/office/drawing/2016/5/11/chartex" xmlns:cx6="http://schemas.microsoft.com/office/drawing/2016/5/12/chartex" xmlns:cx7="http://schemas.microsoft.com/office/drawing/2016/5/13/chartex" xmlns:cx8="http://schemas.microsoft.com/office/drawing/2016/5/14/chartex" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:aink="http://schemas.microsoft.com/office/drawing/2016/ink" xmlns:am3d="http://schemas.microsoft.com/office/drawing/2017/model3d" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:oel="http://schemas.microsoft.com/office/2019/extlst" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:w16cex="http://schemas.microsoft.com/office/word/2018/wordml/cex" xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid" xmlns:w16="http://schemas.microsoft.com/office/word/2018/wordml" xmlns:w16du="http://schemas.microsoft.com/office/word/2023/wordml/word16du" xmlns:w16sdtdh="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash" xmlns:w16sdtfl="http://schemas.microsoft.com/office/word/2024/wordml/sdtformatlock" xmlns:w16se="http://schemas.microsoft.com/office/word/2015/wordml/symex" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 w15 w16se w16cid w16 w16cex w16sdtdh w16sdtfl w16du wp14">
+  <w:p w14:paraId="58D3DEED" w14:textId="77777777" w:rsidR="008F2E9E" w:rsidRDefault="00F939E9">
+    <w:pPr>
+      <w:jc w:val="center"/>
+    </w:pPr>
+    <w:r>
+      <w:rPr>
+        <w:noProof/>
+      </w:rPr>
+      <mc:AlternateContent>
+        <mc:Choice Requires="wps">
+          <w:drawing>
+            <wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" relativeHeight="251666432" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1" wp14:anchorId="19D7276E" wp14:editId="6E1059C3">
+              <wp:simplePos x="0" y="0"/>
+              <wp:positionH relativeFrom="column">
+                <wp:posOffset>0</wp:posOffset>
+              </wp:positionH>
+              <wp:positionV relativeFrom="paragraph">
+                <wp:posOffset>292735</wp:posOffset>
+              </wp:positionV>
+              <wp:extent cx="5760085" cy="0"/>
+              <wp:effectExtent l="0" t="28575" r="12065" b="28575"/>
+              <wp:wrapNone/>
+              <wp:docPr id="9" name="直线 11"/>
+              <wp:cNvGraphicFramePr/>
+              <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+                <a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                  <wps:wsp>
+                    <wps:cNvCnPr/>
+                    <wps:spPr>
+                      <a:xfrm flipV="1">
+                        <a:off x="0" y="0"/>
+                        <a:ext cx="5760085" cy="0"/>
+                      </a:xfrm>
+                      <a:prstGeom prst="line">
+                        <a:avLst/>
+                      </a:prstGeom>
+                      <a:ln w="57150" cap="flat" cmpd="thickThin">
+                        <a:solidFill>
+                          <a:srgbClr val="000000"/>
+                        </a:solidFill>
+                        <a:prstDash val="solid"/>
+                        <a:headEnd type="none" w="med" len="med"/>
+                        <a:tailEnd type="none" w="med" len="med"/>
+                      </a:ln>
+                    </wps:spPr>
+                    <wps:bodyPr/>
+                  </wps:wsp>
+                </a:graphicData>
+              </a:graphic>
+            </wp:anchor>
+          </w:drawing>
+        </mc:Choice>
+        <mc:Fallback>
+          <w:pict>
+            <v:line w14:anchorId="7CDDF301" id="直线 11" o:spid="_x0000_s1026" style="position:absolute;flip:y;z-index:251666432;visibility:visible;mso-wrap-style:square;mso-wrap-distance-left:9pt;mso-wrap-distance-top:0;mso-wrap-distance-right:9pt;mso-wrap-distance-bottom:0;mso-position-horizontal:absolute;mso-position-horizontal-relative:text;mso-position-vertical:absolute;mso-position-vertical-relative:text" from="0,23.05pt" to="453.55pt,23.05pt" o:gfxdata="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&#13;&#10;" strokeweight="4.5pt">
+              <v:stroke linestyle="thickThin"/>
+            </v:line>
+          </w:pict>
+        </mc:Fallback>
+      </mc:AlternateContent>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:rFonts w:ascii="华文中宋" w:eastAsia="华文中宋" w:hAnsi="华文中宋" w:hint="eastAsia"/>
+        <w:sz w:val="28"/>
+        <w:szCs w:val="28"/>
+      </w:rPr>
+      <w:t>北京交通大学毕业设计（论文）                             正文</w:t>
+    </w:r>
+  </w:p>
+</w:hdr>

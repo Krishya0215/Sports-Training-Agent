@@ -59,6 +59,17 @@ class UserDatabase:
         except Exception:
             pass  # 列已存在则忽略
 
+        # 迁移：为记忆表补充访问追踪字段（支持遗忘机制）
+        for table in ("memory_semantic_facts", "memory_episodic_events"):
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN access_count INTEGER DEFAULT 0")
+            except Exception:
+                pass
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN last_accessed_at TEXT DEFAULT NULL")
+            except Exception:
+                pass
+
         # 创建token表
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tokens (
@@ -1260,6 +1271,67 @@ class UserDatabase:
         conn.close()
         return int(row["count"]) if row else 0
 
+    # ============== 记忆遗忘机制相关：访问追踪 & 归档 ==============
+
+    def bump_fact_access(self, fact_id: int) -> None:
+        """记录一次对语义事实的访问：access_count+1，更新 last_accessed_at"""
+        conn = self._get_connection()
+        now = datetime.now().isoformat()
+        conn.cursor().execute("""
+            UPDATE memory_semantic_facts
+            SET access_count = COALESCE(access_count, 0) + 1,
+                last_accessed_at = ?
+            WHERE id = ?
+        """, (now, fact_id))
+        conn.commit()
+        conn.close()
+
+    def bump_event_access(self, event_id: int) -> None:
+        """记录一次对情景事件的访问"""
+        conn = self._get_connection()
+        now = datetime.now().isoformat()
+        conn.cursor().execute("""
+            UPDATE memory_episodic_events
+            SET access_count = COALESCE(access_count, 0) + 1,
+                last_accessed_at = ?
+            WHERE id = ?
+        """, (now, event_id))
+        conn.commit()
+        conn.close()
+
+    def archive_semantic_fact(self, fact_id: int) -> None:
+        """软归档：将 is_active 置 0；list_semantic_facts 已过滤 is_active=1，因此自动不再参与检索"""
+        conn = self._get_connection()
+        conn.cursor().execute(
+            "UPDATE memory_semantic_facts SET is_active = 0, updated_at = ? WHERE id = ?",
+            (datetime.now().isoformat(), fact_id)
+        )
+        conn.commit()
+        conn.close()
+
+    def list_active_facts_for_decay(self, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        列出所有处于活跃状态的语义事实，附带衰减计算所需字段。
+        遗忘服务用它来批量计算 strength。
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if user_id is None:
+            cursor.execute("""
+                SELECT id, user_id, fact_category, fact_key, confidence,
+                       access_count, last_accessed_at, created_at, updated_at
+                FROM memory_semantic_facts WHERE is_active = 1
+            """)
+        else:
+            cursor.execute("""
+                SELECT id, user_id, fact_category, fact_key, confidence,
+                       access_count, last_accessed_at, created_at, updated_at
+                FROM memory_semantic_facts WHERE is_active = 1 AND user_id = ?
+            """, (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
     def create_perceptual_asset(self, asset: Dict[str, Any]) -> Dict[str, Any]:
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -1523,6 +1595,22 @@ class UserDatabase:
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
+
+    def delete_conversation(self, user_id: int, conversation_id: str) -> bool:
+        """删除某个对话的所有消息"""
+        try:
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM chat_messages
+                WHERE user_id = ? AND conversation_id = ?
+            """, (user_id, conversation_id))
+            conn.commit()
+            deleted = cursor.rowcount
+            conn.close()
+            return deleted > 0
+        except Exception:
+            return False
 
     def end_working_session(
         self,

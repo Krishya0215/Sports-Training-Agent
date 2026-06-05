@@ -30,6 +30,7 @@ class AgentState(TypedDict):
     question_type: str  # 问题类型 ('professional' 或 'chat')
     use_rag: bool  # 是否使用RAG
     classification_confidence: float  # 分类置信度
+    doc_sources: List[str]  # 去重后的文档来源文件名列表
 
 
 class SportsTrainingAgent:
@@ -206,16 +207,22 @@ class SportsTrainingAgent:
             logger.info(f"\n📋 格式化检索上下文")
             # 格式化检索到的文档
             context_parts = []
+            seen_sources = []
             for i, doc in enumerate(retrieved_docs, 1):
                 source = doc.metadata.get("source", "未知来源")
-                context_parts.append(f"[文档{i}] 来源: {source}\n内容: {doc.page_content}\n")
-            
+                file_name = doc.metadata.get("file_name", "") or (source.split("/")[-1] if "/" in source else source)
+                context_parts.append(f"[文档{i}] 来源: {file_name}\n内容: {doc.page_content}\n")
+                if file_name not in seen_sources:
+                    seen_sources.append(file_name)
+
             context = "\n".join(context_parts)
             state["context"] = context
-            logger.info(f"✓ 上下文格式化完成 ({len(retrieved_docs)} 个文档)\n")
+            state["doc_sources"] = seen_sources
+            logger.info(f"✓ 上下文格式化完成 ({len(retrieved_docs)} 个文档，{len(seen_sources)} 个来源)\n")
         else:
             # 没有检索到文档
             state["context"] = "[无知识库内容]"
+            state["doc_sources"] = []
         
         # 获取对话历史
         chat_history = self.memory_manager.get_context_for_query()
@@ -250,6 +257,12 @@ class SportsTrainingAgent:
             "retrieved_context": context,
             "chat_history": chat_history if chat_history else "无历史对话"
         })
+
+        # 追加参考来源
+        doc_sources = state.get("doc_sources", [])
+        if doc_sources:
+            sources_text = "\n".join(f"- {src}" for src in doc_sources)
+            answer += f"\n\n---\n\n**📚 参考来源**\n\n{sources_text}"
 
         state["answer"] = answer
         logger.info(f"✓ 答案生成完成\n")
@@ -323,6 +336,7 @@ class SportsTrainingAgent:
             "question_type": "unknown",
             "use_rag": False,
             "classification_confidence": 0,
+            "doc_sources": [],
             "memory_context": memory_context or {}  # 传递完整的记忆上下文
         }
         

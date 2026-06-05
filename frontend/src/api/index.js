@@ -74,7 +74,8 @@ export default {
         question,
         use_multi_agent: Boolean(options.useMultiAgent),
         user_profile: options.userProfile || null,
-        conversation_id: options.conversationId || null
+        conversation_id: options.conversationId || null,
+        chat_history: options.chatHistory || null
       }
 
       // 添加附件参数
@@ -231,6 +232,10 @@ export default {
 
   getChatHistory() {
     return api.get('/chat/history')
+  },
+
+  deleteConversation(conversationId) {
+    return api.delete(`/chat/history/${encodeURIComponent(conversationId)}`)
   },
 
   get(url, config) {

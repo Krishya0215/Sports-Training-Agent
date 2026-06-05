@@ -739,6 +739,7 @@ const renderMarkdown = (content = '') => {
   const html = []
   let inList = false
   let inParagraph = false
+  let inReferenceSources = false
 
   const closeList = () => {
     if (inList) {
@@ -751,6 +752,15 @@ const renderMarkdown = (content = '') => {
     if (inParagraph) {
       html.push('</p>')
       inParagraph = false
+    }
+  }
+
+  const closeReferenceSources = () => {
+    if (inReferenceSources) {
+      closeList()
+      closeParagraph()
+      html.push('</div>')
+      inReferenceSources = false
     }
   }
 
@@ -779,6 +789,16 @@ const renderMarkdown = (content = '') => {
       continue
     }
 
+    // 检测参考来源标题（加粗文本格式）
+    if (/^\*\*📚\s*参考来源\*\*$/.test(line) || /^\*\*参考来源\*\*$/.test(line)) {
+      closeList()
+      closeParagraph()
+      html.push('<div class="reference-sources">')
+      html.push('<h4 class="reference-title">📚 参考来源</h4>')
+      inReferenceSources = true
+      continue
+    }
+
     if (/^[-*]\s+/.test(line)) {
       closeParagraph()
       if (!inList) {
@@ -802,6 +822,7 @@ const renderMarkdown = (content = '') => {
 
   closeList()
   closeParagraph()
+  closeReferenceSources()
 
   return html.join('')
 }
@@ -1216,19 +1237,29 @@ const newChat = () => {
   currentChat.value = null
 }
 
-const deleteChatHistory = (index) => {
+const deleteChatHistory = async (index) => {
   if (!window.confirm('确定删除这条对话记录吗？')) return
 
+  const chat = chatHistory.value[index]
+  const conversationId = chat?.conversationId
+
+  // 先从前端移除
   chatHistory.value.splice(index, 1)
 
   if (currentChat.value === index) {
     messages.value = []
     currentChat.value = null
-    return
+  } else if (currentChat.value !== null && currentChat.value > index) {
+    currentChat.value -= 1
   }
 
-  if (currentChat.value !== null && currentChat.value > index) {
-    currentChat.value -= 1
+  // 同步删除后端数据库中的记录
+  if (conversationId) {
+    try {
+      await api.deleteConversation(conversationId)
+    } catch (error) {
+      console.error('删除后端对话记录失败:', error)
+    }
   }
 }
 
@@ -1428,7 +1459,7 @@ const extractTrainingSummary = (content = '') => {
   return cleanedText.length > 80 ? cleanedText.slice(0, 80) + '...' : cleanedText
 }
 
-const updateCurrentConversation = (question, assistantMessage, currentAttachments = []) => {
+const updateCurrentConversation = (question, assistantMessage, currentAttachments = [], conversationId = null) => {
   if (currentChat.value !== null && chatHistory.value[currentChat.value]) {
     const target = chatHistory.value[currentChat.value]
 
@@ -1466,7 +1497,7 @@ const updateCurrentConversation = (question, assistantMessage, currentAttachment
     question,
     answer: assistantMessage.content,
     timestamp: new Date(),
-    conversationId: generateConversationId(),
+    conversationId: conversationId || generateConversationId(),
     conversation: sanitizeConversation(
       [
         normalizeMessage({ role: 'user', content: question, timestamp: new Date() }),
@@ -1687,12 +1718,8 @@ const sendMessage = async (text = null, options = {}) => {
         })
 
         messages.value[assistantMessageIndex] = assistantMessage
-        updateCurrentConversation(effectiveQuestion, assistantMessage, currentAttachments)
+        updateCurrentConversation(effectiveQuestion, assistantMessage, currentAttachments, conversationId)
 
-        // 确保当前对话保存了 conversationId（新对话在 unshift 后赋值）
-        if (currentChat.value !== null && chatHistory.value[currentChat.value] && !chatHistory.value[currentChat.value].conversationId) {
-          chatHistory.value[currentChat.value].conversationId = conversationId
-        }
 
         // 清空附件
         attachments.value = []
@@ -1719,7 +1746,11 @@ const sendMessage = async (text = null, options = {}) => {
         useMultiAgent,
         userProfile,
         attachments: currentAttachments,
-        conversationId
+        conversationId,
+        chatHistory: messages.value
+          .filter(m => m.content)
+          .slice(-6)
+          .map(m => ({ role: m.role, content: m.role === 'assistant' ? (m.content || '').slice(0, 500) : m.content }))
       }
     )
 
@@ -2406,6 +2437,36 @@ watch(
   height: 1px;
   margin: 18px 0 22px;
   background: linear-gradient(90deg, transparent, rgba(0, 113, 227, 0.22), transparent);
+}
+
+.markdown-message :deep(.reference-sources) {
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: rgba(0, 113, 227, 0.04);
+  border: 1px solid rgba(0, 113, 227, 0.1);
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.markdown-message :deep(.reference-title) {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+}
+
+.markdown-message :deep(.reference-sources ul) {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.markdown-message :deep(.reference-sources li) {
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
 }
 
 /* ==================== 计划详情弹窗 markdown-content 样式 ==================== */

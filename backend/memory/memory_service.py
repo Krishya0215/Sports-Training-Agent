@@ -74,6 +74,14 @@ class MemoryService:
                     "updated_at": fact.get("updated_at")
                 }
 
+            # 访问追踪：让"使用频次加成"在遗忘机制中真的生效
+            fact_id = fact.get("id")
+            if fact_id is not None:
+                try:
+                    db.bump_fact_access(fact_id)
+                except Exception:
+                    pass  # 访问追踪失败不影响主流程
+
         return dict(profile)
 
     def get_recent_episodes(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
@@ -88,6 +96,14 @@ class MemoryService:
             最近情景事件列表
         """
         episodes = db.list_episodic_events(user_id, limit=limit)
+        # 访问追踪：对每条被读出的事件递增 access_count
+        for ep in episodes:
+            ep_id = ep.get("id")
+            if ep_id is not None:
+                try:
+                    db.bump_event_access(ep_id)
+                except Exception:
+                    pass
         return episodes
 
     def get_episodes_by_type(self, user_id: int, event_type: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -415,6 +431,37 @@ class MemoryService:
                 prompt_parts.append(line)
 
         return "\n".join(prompt_parts) if len(prompt_parts) > 1 else "暂无用户记忆数据"
+
+    # ============== 记忆写入：经 ImportanceScorer 评分后入库 ==============
+
+    def write_scored_event(self, user_id: int, event: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        统一的情景事件写入入口：先用 ImportanceScorer 给事件打分，把 importance
+        写入 event["importance_score"]，再交给 db 入库。
+
+        与直接调 db.create_episodic_event 相比，这里把 4 维评分链路落到实处，
+        而不是写一个硬编码常量。
+
+        Args:
+            user_id: 用户ID
+            event: 事件字典（兼容 db.create_episodic_event 接口）
+
+        Returns:
+            写入后的事件记录；附带 score_details 字段返回各维度分数，便于调试。
+        """
+        # 延迟导入避免与 db 层循环依赖
+        from backend.memory.memory_importance import importance_scorer
+
+        scored_event = dict(event)
+        scored_event["user_id"] = user_id
+        score_details = importance_scorer.score(scored_event)
+        scored_event["importance_score"] = score_details["importance"]
+
+        created = db.create_episodic_event(user_id, scored_event)
+        if created is not None:
+            # 把分维度评分一并返回，便于上层日志或诊断使用
+            created = {**created, "score_details": score_details}
+        return created or {"score_details": score_details}
 
 
 # 全局实例

@@ -79,7 +79,13 @@ class CoachAgent:
         formatted = []
         for i, doc in enumerate(docs[:5], 1):
             content = doc.page_content if hasattr(doc, 'page_content') else str(doc)
-            formatted.append(f"[文档{i}] {content[:200]}...")
+            file_name = ""
+            if hasattr(doc, 'metadata'):
+                file_name = doc.metadata.get("file_name", "") or doc.metadata.get("source", "")
+                if "/" in file_name:
+                    file_name = file_name.split("/")[-1]
+            source_label = f" (来源: {file_name})" if file_name else ""
+            formatted.append(f"[文档{i}]{source_label} {content[:200]}...")
         return "\n".join(formatted)
 
 
@@ -471,6 +477,22 @@ class MultiAgentTrainingSystem:
 
         if not synthesized_answer:
             synthesized_answer = state.get("agent_results", {}).get("planning", "")
+
+        # 追加参考来源
+        retrieved_docs = state.get("retrieved_docs", [])
+        if retrieved_docs:
+            seen_sources = []
+            for doc in retrieved_docs:
+                file_name = ""
+                if hasattr(doc, 'metadata'):
+                    file_name = doc.metadata.get("file_name", "") or doc.metadata.get("source", "")
+                    if "/" in file_name:
+                        file_name = file_name.split("/")[-1]
+                if file_name and file_name not in seen_sources:
+                    seen_sources.append(file_name)
+            if seen_sources:
+                sources_text = "\n".join(f"- {src}" for src in seen_sources)
+                synthesized_answer += f"\n\n---\n\n**📚 参考来源**\n\n{sources_text}"
 
         structured_response = {
             "summary": synthesized_answer[:240],

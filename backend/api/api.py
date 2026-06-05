@@ -70,6 +70,7 @@ class QueryRequest(BaseModel):
     user_profile: Optional[Dict] = None  # 用户档案
     conversation_id: Optional[str] = None  # 对话ID（用于持久化）
     attachments: Optional[List[str]] = None  # 附件ID列表（感知记忆中的资产ID）
+    chat_history: Optional[List[Dict]] = None  # 前端传入的当前对话历史
 
 
 class TrainingPlan(BaseModel):
@@ -654,6 +655,28 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                 memory_prompt += "\n" + perceptual_info
                 logger.info(f"已添加 {len(perceptual_assets)} 个感知记忆资产到上下文")
 
+            # 从前端传入的对话历史构建上下文
+            conv_history_text = ""
+            if request.chat_history:
+                try:
+                    recent = request.chat_history[-6:]  # 最近3轮
+                    history_parts = []
+                    for m in recent:
+                        role = m.get("role", "")
+                        content = m.get("content", "")
+                        if not content:
+                            continue
+                        if role == "user":
+                            history_parts.append(f"用户: {content}")
+                        elif role == "assistant":
+                            summary = content[:300] + "..." if len(content) > 300 else content
+                            history_parts.append(f"AI教练: {summary}")
+                    conv_history_text = "\n".join(history_parts)
+                    if conv_history_text:
+                        logger.info(f"已从前端加载对话历史: {len(recent)} 条消息")
+                except Exception as e:
+                    logger.warning(f"解析前端对话历史失败: {e}")
+
             if request.use_multi_agent:
                 if not multi_agent_system:
                     yield f"data: {json.dumps({'type': 'answer', 'content': '多智能体系统未初始化', 'done': True}, ensure_ascii=False)}\n\n"
@@ -679,11 +702,13 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
                                 "_memory_context": memory_context,
                                 "_memory_prompt": memory_prompt
                             }
-                        # 如果有图片分析结果，将其追加到问题中
+                        # 注入对话历史和图片分析结果
                         question_to_send = request.question
+                        if conv_history_text:
+                            question_to_send = f"【当前对话历史】\n{conv_history_text}\n\n【当前问题】\n{request.question}"
                         if image_analysis_parts:
                             analysis_text = "\n\n".join(image_analysis_parts)
-                            question_to_send = f"{request.question}\n\n{analysis_text}"
+                            question_to_send = f"{question_to_send}\n\n{analysis_text}"
                         result_holder["result"] = multi_agent_system.process_request(
                             question_to_send,
                             enhanced_profile,
@@ -733,11 +758,13 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
 
                 logger.info(f"收到单智能体查询: {request.question}")
 
-                # 如果有图片分析结果，将其追加到问题中
+                # 注入对话历史和图片分析结果
                 augmented_question = request.question
+                if conv_history_text:
+                    augmented_question = f"【当前对话历史】\n{conv_history_text}\n\n【当前问题】\n{request.question}"
                 if image_analysis_parts:
                     analysis_text = "\n\n".join(image_analysis_parts)
-                    augmented_question = f"{request.question}\n\n{analysis_text}"
+                    augmented_question = f"{augmented_question}\n\n{analysis_text}"
                     logger.info(f"已将 {len(image_analysis_parts)} 张图片分析结果注入问题")
 
                 # 使用单智能体处理，注入记忆上下文
@@ -794,7 +821,6 @@ async def query(request: QueryRequest, authorization: Optional[str] = Header(Non
 
             # 持久化到数据库
             if current_user:
-                conv_id = request.conversation_id or str(uuid.uuid4())
                 db.save_chat_message(
                     user_id=current_user["id"],
                     conversation_id=conv_id,
@@ -1721,11 +1747,27 @@ async def get_chat_history(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/api/chat/history/{conversation_id}")
+async def delete_conversation(conversation_id: str, authorization: Optional[str] = Header(None)):
+    """删除指定对话"""
+    try:
+        current_user = _require_current_user(authorization)
+        deleted = db.delete_conversation(current_user["id"], conversation_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="对话不存在或已被删除")
+        return {"success": True, "conversation_id": conversation_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除对话失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/health")
 async def health_check():
     """
     健康检查接口
-    
+
     Returns:
         系统健康状态
     """
