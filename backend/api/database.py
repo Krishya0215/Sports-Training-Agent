@@ -1116,6 +1116,19 @@ class UserDatabase:
         conn.close()
         return self._row_to_episode(row) if row else None
 
+    def delete_episodic_events_by_record(self, user_id: int, record_id: int) -> int:
+        """删除与指定record_id关联的episodic events"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM memory_episodic_events WHERE user_id = ? AND record_id = ?",
+            (user_id, record_id)
+        )
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return deleted_count
+
     def list_episodic_events(
         self,
         user_id: int,

@@ -599,15 +599,18 @@ class MultiAgentTrainingSystem:
     def process_request(self, user_input: str, user_profile: dict = None, stream_callback=None) -> dict:
         """
         处理用户请求
-        
+
         Args:
             user_input: 用户输入
             user_profile: 用户档案（目标、能力、历史数据等）
             stream_callback: 流式回调函数，用于实时返回每个教练的结果
-            
+
         Returns:
             包含最终响应和工作流历史的字典
         """
+        # 清除工作记忆，避免跨用户对话污染
+        self.memory_manager.working_memory.clear()
+
         # 初始化状态
         initial_state = {
             "user_input": user_input,

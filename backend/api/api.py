@@ -2595,6 +2595,8 @@ async def delete_training_record(record_id: int, authorization: Optional[str] = 
         deleted = db.delete_training_record(user["id"], record_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="训练记录不存在")
+        # 同步删除对应的episodic event记忆
+        db.delete_episodic_events_by_record(user["id"], record_id)
         logger.info(f"删除训练记录: {record_id}")
         return {"status": "success", "message": "训练记录已删除"}
     except HTTPException:
@@ -2680,6 +2682,8 @@ async def delete_daily_record(record_id: int, authorization: Optional[str] = Hea
         deleted = db.delete_daily_record(user["id"], record_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="饮食记录不存在")
+        # 同步删除对应的episodic event记忆
+        db.delete_episodic_events_by_record(user["id"], record_id)
         logger.info(f"删除饮食记录: {record_id}")
         return {"status": "success", "message": "饮食记录已删除"}
     except HTTPException:
@@ -2764,6 +2768,8 @@ async def delete_weight_record(record_id: int, authorization: Optional[str] = He
         deleted = db.delete_weight_record(user["id"], record_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="体重记录不存在")
+        # 同步删除对应的episodic event记忆
+        db.delete_episodic_events_by_record(user["id"], record_id)
         logger.info(f"删除体重记录: {record_id}")
         return {"status": "success", "message": "体重记录已删除"}
     except HTTPException:

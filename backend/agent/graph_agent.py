@@ -327,6 +327,9 @@ class SportsTrainingAgent:
         Returns:
             包含答案和思考过程的字典
         """
+        # 清除工作记忆，避免跨用户对话污染（真正的上下文通过前端chat_history传入）
+        self.memory_manager.working_memory.clear()
+
         # 构建记忆上下文字符串
         memory_prompt = ""
         if memory_context:
