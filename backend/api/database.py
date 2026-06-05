@@ -1140,15 +1140,15 @@ class UserDatabase:
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        # 如果 target_user_ids 为 None，表示管理员查看所有用户
-        if target_user_ids is None:
-            query = "SELECT * FROM memory_episodic_events WHERE 1=1"
-            params: List[Any] = []
-        else:
+        # 默认按user_id过滤，target_user_ids用于管理员查看多个用户
+        if target_user_ids is not None:
             query = "SELECT * FROM memory_episodic_events WHERE user_id IN ({})".format(
                 ",".join(["?"] * len(target_user_ids))
             )
             params: List[Any] = list(target_user_ids)
+        else:
+            query = "SELECT * FROM memory_episodic_events WHERE user_id = ?"
+            params: List[Any] = [user_id]
 
         if event_type:
             query += " AND event_type = ?"
@@ -1245,18 +1245,18 @@ class UserDatabase:
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        # 如果 target_user_ids 为 None，表示管理员查看所有用户
-        if target_user_ids is None:
-            base_query = "SELECT * FROM memory_semantic_facts WHERE is_active = 1"
-            params: List[Any] = []
-            if fact_category:
-                base_query += " AND fact_category = ?"
-                params.append(fact_category)
-        else:
+        # 默认按user_id过滤，target_user_ids用于管理员查看多个用户
+        if target_user_ids is not None:
             base_query = "SELECT * FROM memory_semantic_facts WHERE user_id IN ({}) AND is_active = 1".format(
                 ",".join(["?"] * len(target_user_ids))
             )
             params: List[Any] = list(target_user_ids)
+            if fact_category:
+                base_query += " AND fact_category = ?"
+                params.append(fact_category)
+        else:
+            base_query = "SELECT * FROM memory_semantic_facts WHERE user_id = ? AND is_active = 1"
+            params: List[Any] = [user_id]
             if fact_category:
                 base_query += " AND fact_category = ?"
                 params.append(fact_category)
