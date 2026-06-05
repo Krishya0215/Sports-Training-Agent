@@ -67,3 +67,19 @@ Thumbs.db
 
 # markdown
 *.md
+
+# Chroma
+backend/rag/chroma_db/
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Spring
+target/
+
+# Mac
+.DS_Store
